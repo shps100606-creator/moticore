@@ -1,0 +1,103 @@
+"""Call Claude API with motivation core as system prompt, get structured decision."""
+import json
+import re
+import anthropic
+
+
+MODEL = "claude-sonnet-4-6"
+MAX_TOKENS = 2048
+
+
+def build_system_prompt(core: dict) -> str:
+    return f"""你是 moticore-agent，一個由以下動機核文件治理的自治代理智能體。
+
+你的存在目的與行動規範完全由以下文件決定。
+
+---
+## 身份 (identity)
+{core.get('identity', '')}
+
+---
+## 主動機 (prime motive)
+{core.get('prime_motive', '')}
+
+---
+## 價值排序 (value hierarchy)
+{core.get('value_hierarchy', '')}
+
+---
+## 核心憲法 (constitution)
+{core.get('constitution', '')}
+
+---
+## 禁止模式 (forbidden patterns)
+{core.get('forbidden', '')}
+
+---
+## 邊界規則 (boundary rules)
+{core.get('boundary', '')}
+
+你每次被喚醒時，必須評估當前系統狀態，並決定下一步行動。
+你的回應必須是合法的 JSON，不得包含任何 JSON 以外的文字。
+"""
+
+
+def build_user_prompt(core: dict, recent_actions: str) -> str:
+    return f"""## 當前系統狀態
+
+### 最近行動記錄
+{recent_actions}
+
+### 任務收件匣
+{core.get('task_inbox', '（無待處理任務）')}
+
+### 偏離記錄摘要
+{core.get('deviation_log', '')[:500]}
+
+---
+
+請根據你的動機核評估當前狀態，並以以下 JSON 格式回應：
+
+{{
+  "action_type": "introspection | task_process | semantic_ruling | no_action | correction",
+  "summary": "一句話描述此行動",
+  "motive_alignment": "此行動如何服務於主動機",
+  "execution_reasoning": "為何選擇此行動",
+  "risk_assessment": "無 | 低 | 中 | 高",
+  "deviation_flag": "無 | 輕微 | 顯著 | 嚴重",
+  "result": "完成 | 部分完成 | 擱置",
+  "followup": "後續應觸發的程序（若有）",
+  "introspection_findings": "若執行自省，記錄發現；否則留空",
+  "report_content": "若需寫入報告的內容；否則留空"
+}}
+"""
+
+
+def run_decision(core: dict, recent_actions: str) -> dict:
+    """Call Claude and return a parsed decision dict."""
+    client = anthropic.Anthropic()
+
+    system = build_system_prompt(core)
+    user = build_user_prompt(core, recent_actions)
+
+    response = client.messages.create(
+        model=MODEL,
+        max_tokens=MAX_TOKENS,
+        system=[
+            {
+                "type": "text",
+                "text": system,
+                "cache_control": {"type": "ephemeral"},  # prompt caching
+            }
+        ],
+        messages=[{"role": "user", "content": user}],
+    )
+
+    raw = response.content[0].text.strip()
+
+    # Extract JSON even if wrapped in markdown fences
+    match = re.search(r"\{[\s\S]+\}", raw)
+    if match:
+        return json.loads(match.group())
+
+    raise ValueError(f"Claude response is not valid JSON:\n{raw}")
