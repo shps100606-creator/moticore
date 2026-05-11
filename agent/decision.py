@@ -11,7 +11,7 @@ from google import genai
 from google.genai import types
 from json_repair import repair_json
 
-MODEL = "gemini-2.5-flash"
+MODEL = "gemini-2.0-flash"
 
 
 def _client() -> genai.Client:
@@ -48,14 +48,12 @@ def build_system_prompt(core: dict) -> str:
 def _parse_json(text: str) -> dict:
     """Parse JSON from Gemini, repairing common issues like unescaped newlines."""
     text = text.strip()
-    # strip markdown fences if present
     if text.startswith("```"):
         text = re.sub(r"^```[^\n]*\n", "", text)
         text = re.sub(r"\n```$", "", text.strip())
     try:
         return json.loads(text)
     except json.JSONDecodeError:
-        # json-repair handles unterminated strings, unescaped newlines, trailing commas, etc.
         repaired = repair_json(text, return_objects=True)
         if isinstance(repaired, dict):
             return repaired
