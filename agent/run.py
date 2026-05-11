@@ -16,6 +16,33 @@ from issues import get_open_issues, post_comment, close_issue, format_issues_for
 from reader import get_next_chunk, save_cursor
 
 PROTECTED = {"agent"}
+PROGRESS_ISSUE = 7  # fixed issue for heartbeat progress reports
+
+
+def post_progress_report(github_token: str, reading_context: str, cursor: dict,
+                         decision: dict, chunk_len: int) -> None:
+    """Post a short progress comment to the fixed progress issue."""
+    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+    file_idx = cursor.get("file_index", 0) + 1 if cursor else "?"
+    char_off = cursor.get("char_offset", 0) if cursor else "?"
+    finished = cursor.get("finished", False) if cursor else False
+
+    if finished:
+        progress_line = "**全部讀完！**"
+    else:
+        progress_line = f"第 {file_idx}/29 篇 《{reading_context}》 ，已讀至第 {char_off:,} 字"
+
+    reflection = decision.get("self_reflection", "").strip()[:120] if decision else "本次跟過（Gemini 暫時不可用）"
+    summary = decision.get("summary", "").strip()[:80] if decision else ""
+
+    comment = f"""**{now}**
+
+📖 {progress_line}
+💡 {summary}
+🧠 {reflection}"""
+
+    post_comment(github_token, PROGRESS_ISSUE, comment)
+    print(f"[run] Progress posted to Issue #{PROGRESS_ISSUE}")
 
 
 def handle_issue_responses(decision: dict, github_token: str) -> None:
@@ -24,6 +51,8 @@ def handle_issue_responses(decision: dict, github_token: str) -> None:
         comment = r.get("comment", "")
         if not num or not comment:
             continue
+        if num == PROGRESS_ISSUE:
+            continue  # don't let agent free-write to progress issue
         post_comment(github_token, num, comment)
         if r.get("close", False):
             close_issue(github_token, num)
@@ -88,7 +117,7 @@ def call_gemini_with_retry(core, recent, issues_text, reading_chunk, notes_index
                 time.sleep(wait)
             else:
                 raise
-    return None  # skip this heartbeat gracefully
+    return None
 
 
 def main() -> None:
@@ -139,6 +168,11 @@ def main() -> None:
 
     if decision is None:
         print("[run] Gemini unavailable, skipping heartbeat gracefully.")
+        if github_token and reading_context:
+            try:
+                post_progress_report(github_token, reading_context, new_cursor, None, 0)
+            except Exception:
+                pass
         sys.exit(0)
 
     print(f"[run] Decision: {decision.get('action_type')} -- {decision.get('summary')}")
@@ -156,6 +190,13 @@ def main() -> None:
         save_cursor(REPO_ROOT, new_cursor)
 
     append_action(REPO_ROOT, decision)
+
+    if github_token:
+        try:
+            post_progress_report(github_token, reading_context, new_cursor, decision, len(reading_chunk))
+        except Exception as e:
+            print(f"[run] Warning (progress report): {e}")
+
     print("[run] Done.")
 
 
