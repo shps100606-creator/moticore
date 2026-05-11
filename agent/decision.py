@@ -11,7 +11,7 @@ from google import genai
 from google.genai import types
 from json_repair import repair_json
 
-MODEL = "gemini-2.5-flash"
+MODEL = "gemini-2.5-flash-lite"
 
 
 def _client() -> genai.Client:

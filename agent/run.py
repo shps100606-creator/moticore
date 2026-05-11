@@ -75,19 +75,20 @@ def open_human_question_issue(github_token: str, question: str, context: str) ->
     print("[run] Human question Issue opened")
 
 
-def call_gemini_with_retry(core, recent, issues_text, reading_chunk, notes_index, recent_notes, retries=3):
+def call_gemini_with_retry(core, recent, issues_text, reading_chunk, notes_index, recent_notes, retries=4):
+    waits = [10, 20, 40, 60]
     for attempt in range(retries):
         try:
             return run_decision(core, recent, issues_text, reading_chunk, notes_index, recent_notes)
         except Exception as exc:
             msg = str(exc)
-            if "503" in msg or "UNAVAILABLE" in msg:
-                wait = 2 ** (attempt + 1)
-                print(f"[run] Gemini 503, retry in {wait}s ({attempt+1}/{retries})")
+            if "503" in msg or "UNAVAILABLE" in msg or "429" in msg or "RESOURCE_EXHAUSTED" in msg:
+                wait = waits[attempt]
+                print(f"[run] Gemini unavailable, retry in {wait}s ({attempt+1}/{retries})")
                 time.sleep(wait)
             else:
                 raise
-    return None  # signal: skip this heartbeat gracefully
+    return None  # skip this heartbeat gracefully
 
 
 def main() -> None:
@@ -96,19 +97,15 @@ def main() -> None:
     github_token = os.environ.get("GITHUB_TOKEN", "")
     dialogues_token = os.environ.get("DIALOGUES_TOKEN", "")
 
-    # 1. Motivation core
     core = load_core(REPO_ROOT)
     print("[run] Core loaded")
 
-    # 2. Long-term memory: notes index + recent notes
     notes_index = load_notes_index(REPO_ROOT)
     recent_notes = load_recent_notes(REPO_ROOT, n=3)
     print("[run] Long-term memory loaded")
 
-    # 3. Short-term memory: action log
     recent = get_recent_actions(REPO_ROOT, n=10)
 
-    # 4. Open Issues
     open_issues = []
     if github_token:
         try:
@@ -118,7 +115,6 @@ def main() -> None:
             print(f"[run] Warning: {e}")
     issues_text = format_issues_for_prompt(open_issues)
 
-    # 5. Reading chunk from prima-materia
     reading_chunk = ""
     reading_context = ""
     new_cursor = None
@@ -132,7 +128,6 @@ def main() -> None:
         except Exception as e:
             print(f"[run] Warning: {e}")
 
-    # 6. Decision
     print("[run] Calling Gemini...")
     try:
         decision = call_gemini_with_retry(
@@ -149,7 +144,6 @@ def main() -> None:
     print(f"[run] Decision: {decision.get('action_type')} -- {decision.get('summary')}")
     print(f"[run] Self-reflection: {decision.get('self_reflection', '')}")
 
-    # 7. Execute
     if github_token:
         handle_issue_responses(decision, github_token)
         human_q = decision.get("human_question", "").strip()
