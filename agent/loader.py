@@ -1,25 +1,23 @@
-"""Load motivation core documents from the repo into memory."""
+"""Load motivation core documents from the repo into a dict."""
 from pathlib import Path
 
 
-DOC_MAP = {
-    "identity":          "motive-core/identity.md",
-    "prime_motive":      "motive-core/prime-motive.md",
-    "value_hierarchy":   "motive-core/value-hierarchy.md",
-    "constitution":      "motive-core/constitution.md",
-    "forbidden":         "guardrails/forbidden-patterns.md",
-    "boundary":          "guardrails/boundary-rules.md",
-    "action_log":        "memory/action-log.md",
-    "deviation_log":     "reflexive/deviation-log.md",
-    "semantic_rulings":  "reflexive/semantic-rulings.md",
-    "task_inbox":        "tasks/inbox.md",
+CORE_FILES = {
+    "identity": "core/identity.md",
+    "prime_motive": "core/prime-motive.md",
+    "value_hierarchy": "core/value-hierarchy.md",
+    "constitution": "core/constitution.md",
+    "forbidden": "core/forbidden.md",
+    "boundary": "core/boundary.md",
+    "task_inbox": "core/task-inbox.md",
+    "deviation_log": "core/deviation-log.md",
 }
 
 
 def load_core(repo_root: Path) -> dict:
-    """Read all motivation core documents and return as a dict."""
-    core = {}
-    for key, rel_path in DOC_MAP.items():
-        path = repo_root / rel_path
-        core[key] = path.read_text(encoding="utf-8") if path.exists() else ""
-    return core
+    """Read all core documents; return empty string if file is missing."""
+    result = {}
+    for key, rel_path in CORE_FILES.items():
+        p = repo_root / rel_path
+        result[key] = p.read_text(encoding="utf-8") if p.exists() else ""
+    return result
