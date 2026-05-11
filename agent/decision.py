@@ -1,30 +1,22 @@
 """Call Gemini API with motivation core as system prompt, get structured decision.
 
 Two-step design:
-1. run_decision()       -> small JSON: what to do, which files to touch (no content)
+1. run_decision()          -> small JSON: what to do, which files to touch
 2. generate_file_content() -> one call per file to generate actual note content
 """
 import os
 import json
-import google.generativeai as genai
-
+from google import genai
+from google.genai import types
 
 MODEL = "gemini-2.5-flash"
 
 
-def _make_model(system: str, max_tokens: int = 2048, json_mode: bool = False) -> genai.GenerativeModel:
+def _client() -> genai.Client:
     api_key = os.environ.get("GOOGLE_API_KEY")
     if not api_key:
-        raise ValueError("GOOGLE_API_KEY environment variable not set")
-    genai.configure(api_key=api_key)
-    kwargs = dict(max_output_tokens=max_tokens, temperature=0.3)
-    if json_mode:
-        kwargs["response_mime_type"] = "application/json"
-    return genai.GenerativeModel(
-        model_name=MODEL,
-        system_instruction=system,
-        generation_config=genai.GenerationConfig(**kwargs),
-    )
+        raise ValueError("GOOGLE_API_KEY not set")
+    return genai.Client(api_key=api_key)
 
 
 def build_system_prompt(core: dict) -> str:
@@ -42,18 +34,16 @@ def build_system_prompt(core: dict) -> str:
 {core.get('forbidden', '')}
 ## 邊界規則
 {core.get('boundary', '')}
-回應必須是合法 JSON 物件。
 """
 
 
 def run_decision(core: dict, recent_actions: str, issues_text: str, reading_chunk: str = "") -> dict:
-    """Step 1: Get a lightweight decision JSON (no file content, only paths + descriptions)."""
+    """Step 1: lightweight decision JSON (paths + descriptions only, no file content)."""
     reading_section = ""
     if reading_chunk:
         reading_section = f"""### 本次閱讀片段
 {reading_chunk}
-
-閱讀後請决定：要建立哪些筆記檔案（只列路徑和一句話描述，不需寫內容）。
+閱讀後請决定要建哪些筆記（只列路徑和一句描述）。
 """
 
     prompt = f"""## 當前狀態
@@ -65,13 +55,12 @@ def run_decision(core: dict, recent_actions: str, issues_text: str, reading_chun
 {recent_actions}
 
 ### 任務收件匣
-{core.get('task_inbox', '（無）')}
+{core.get('task_inbox', '(無)')}
 
 ---
-請回傳此 JSON（file_operations 中只填 path 和 description，不要寫 content）：
-
+請回傳以下 JSON（file_operations 只填 path 和 description，不要寫 content）：
 {{
-  "action_type": "reading | introspection | task_process | issue_response | no_action",
+  "action_type": "reading|introspection|task_process|issue_response|no_action",
   "summary": "一句話",
   "motive_alignment": "",
   "execution_reasoning": "",
@@ -84,26 +73,31 @@ def run_decision(core: dict, recent_actions: str, issues_text: str, reading_chun
     "close": false
   }}],
   "file_operations": [{{
-    "path": "notes/路徑/檔名.md",
-    "description": "這個檔案要記錄什麼",
+    "path": "notes/path/file.md",
+    "description": "用途",
     "mode": "create|append|overwrite"
   }}],
   "human_question": ""
 }}
-若無待處理 issue， issue_responses 為 []。若無筆記， file_operations 為 []。
+若無待處理 issue 則 issue_responses 為 []。若無筆記則 file_operations 為 []。
 """
 
-    m = _make_model(build_system_prompt(core), max_tokens=2048, json_mode=True)
-    resp = m.generate_content(prompt)
-    return json.loads(resp.text)
+    client = _client()
+    response = client.models.generate_content(
+        model=MODEL,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            system_instruction=build_system_prompt(core),
+            max_output_tokens=2048,
+            temperature=0.3,
+            response_mime_type="application/json",
+        ),
+    )
+    return json.loads(response.text)
 
 
 def generate_file_content(core: dict, reading_chunk: str, path: str, description: str) -> str:
-    """Step 2: Generate actual markdown content for a single note file."""
-    system = """你是 moticore-agent，正在撰寫動機論研究筆記。
-請基於提供的閱讀內容，撰寫指定筆記的 markdown 內容。
-直接輸出 markdown 內容，不要加任何 JSON 包裝。"""
-
+    """Step 2: generate actual markdown content for a single note file."""
     prompt = f"""筆記路徑：{path}
 筆記用途：{description}
 
@@ -112,6 +106,14 @@ def generate_file_content(core: dict, reading_chunk: str, path: str, description
 
 請撰寫此筆記的 markdown 內容："""
 
-    m = _make_model(system, max_tokens=4096, json_mode=False)
-    resp = m.generate_content(prompt)
-    return resp.text.strip()
+    client = _client()
+    response = client.models.generate_content(
+        model=MODEL,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            system_instruction="你是 moticore-agent，正在撰寫動機論研究筆記。直接輸出 markdown 內容，不要加 JSON 包裝。",
+            max_output_tokens=4096,
+            temperature=0.4,
+        ),
+    )
+    return response.text.strip()
