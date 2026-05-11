@@ -1,5 +1,5 @@
 """Read open Issues, post comments, and close Issues via GitHub REST API."""
-import os
+import re
 import requests
 
 GITHUB_API = "https://api.github.com"
@@ -16,7 +16,6 @@ def _headers(token: str) -> dict:
 
 
 def get_open_issues(token: str) -> list:
-    """Return open Issues (excluding pull requests), newest first."""
     resp = requests.get(
         f"{GITHUB_API}/repos/{OWNER}/{REPO}/issues",
         headers=_headers(token),
@@ -27,7 +26,6 @@ def get_open_issues(token: str) -> list:
 
 
 def post_comment(token: str, issue_number: int, body: str) -> None:
-    """Post a comment on an Issue."""
     resp = requests.post(
         f"{GITHUB_API}/repos/{OWNER}/{REPO}/issues/{issue_number}/comments",
         headers=_headers(token),
@@ -38,7 +36,6 @@ def post_comment(token: str, issue_number: int, body: str) -> None:
 
 
 def close_issue(token: str, issue_number: int) -> None:
-    """Close an Issue."""
     resp = requests.patch(
         f"{GITHUB_API}/repos/{OWNER}/{REPO}/issues/{issue_number}",
         headers=_headers(token),
@@ -48,14 +45,20 @@ def close_issue(token: str, issue_number: int) -> None:
     print(f"[issues] Issue #{issue_number} closed")
 
 
+def _sanitize(text: str, max_len: int = 200) -> str:
+    """Strip markdown special chars and truncate for safe prompt embedding."""
+    text = re.sub(r"```[\s\S]*?```", "[code block]", text)  # remove code fences
+    text = re.sub(r"[`*#\[\]]", "", text)                   # remove inline markdown
+    text = re.sub(r"\s+", " ", text).strip()
+    return text[:max_len]
+
+
 def format_issues_for_prompt(issues: list) -> str:
-    """Format open issues into readable text for the decision prompt."""
     if not issues:
         return "（目前無待處理 Issue）"
     lines = []
     for i in issues:
-        lines.append(
-            f"- Issue #{i['number']}: {i['title']}\n"
-            f"  內容: {(i.get('body') or '（無說明）')[:300]}"
-        )
+        title = _sanitize(i.get("title", ""), 80)
+        body = _sanitize(i.get("body") or "", 200)
+        lines.append(f"- Issue #{i['number']}: {title}\n  內容: {body}")
     return "\n".join(lines)
