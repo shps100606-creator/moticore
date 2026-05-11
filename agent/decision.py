@@ -39,8 +39,7 @@ def build_system_prompt(core: dict) -> str:
 {core.get('boundary', '')}
 
 你每次被喚醒時，必須評估當前系統狀態，處理待處理的 GitHub Issue，閱讀一段動機論對話原文，並決定下一步行動。
-你的回應必須是合法的 JSON，不得包含任何 JSON 以外的文字。
-請直接輸出 JSON 物件，不要加任何 markdown 代碼區塊。
+你的回應必須是合法的 JSON 物件。
 """
 
 
@@ -55,7 +54,7 @@ def build_user_prompt(core: dict, recent_actions: str, issues_text: str, reading
 - 摘要這段對話的核心想法
 - 找出值得建立筆記的主題
 - 對於不明白或有趣的部分提出問題
-- 自己決定如何組織筆記（按主題、按時間或其他方式）
+- 自己決定如何組織筆記（可按主題、按時間或其他方式）
 - 可以建立新資料夾或對現有筆記展開
 """
 
@@ -72,7 +71,7 @@ def build_user_prompt(core: dict, recent_actions: str, issues_text: str, reading
 
 ---
 
-請根據你的動機核評估當前狀態，以以下 JSON 格式回應。不要使用 markdown 代碼區塊，直接輸出純粹的 JSON：
+請根據你的動機核評估當前狀態，回傳以下結構的 JSON：
 
 {{
   "action_type": "reading | introspection | task_process | issue_response | no_action",
@@ -96,18 +95,18 @@ def build_user_prompt(core: dict, recent_actions: str, issues_text: str, reading
       "mode": "create | append | overwrite"
     }}
   ],
-  "human_question": "若有想問對方的問題，寫在這裡；否則留空"
+  "human_question": "若有想問對方的問題寫在這裡，否則留空字串"
 }}
 
 關於 file_operations：
 - 只能在 notes/ 目錄內操作
 - 必須自行維護 notes/INDEX.md 作為筆記目錄
-- 可以自由建立子目錄與檔案，決定權全在你
+- 可以自由建立子目錄與檔案
 """
 
 
 def run_decision(core: dict, recent_actions: str, issues_text: str, reading_chunk: str = "") -> dict:
-    """Call Gemini 2.5 Flash and return a parsed decision dict."""
+    """Call Gemini 2.5 Flash with JSON mode and return a parsed decision dict."""
     api_key = os.environ.get("GOOGLE_API_KEY")
     if not api_key:
         raise ValueError("GOOGLE_API_KEY environment variable not set")
@@ -120,21 +119,10 @@ def run_decision(core: dict, recent_actions: str, issues_text: str, reading_chun
         generation_config=genai.GenerationConfig(
             max_output_tokens=MAX_TOKENS,
             temperature=0.3,
+            response_mime_type="application/json",
         ),
     )
 
     user_prompt = build_user_prompt(core, recent_actions, issues_text, reading_chunk)
     response = model.generate_content(user_prompt)
-    raw = response.text.strip()
-
-    raw = re.sub(r"^```(?:json)?\s*", "", raw)
-    raw = re.sub(r"\s*```$", "", raw)
-    raw = raw.strip()
-
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        match = re.search(r"\{[\s\S]+\}", raw)
-        if match:
-            return json.loads(match.group())
-        raise ValueError(f"Gemini response is not valid JSON:\n{raw[:500]}")
+    return json.loads(response.text)
