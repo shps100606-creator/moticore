@@ -1,10 +1,11 @@
-"""Call Claude API with motivation core as system prompt, get structured decision."""
+"""Call Gemini API with motivation core as system prompt, get structured decision."""
+import os
 import json
 import re
-import anthropic
+import google.generativeai as genai
 
 
-MODEL = "claude-sonnet-4-6"
+MODEL = "gemini-2.0-flash"
 MAX_TOKENS = 2048
 
 
@@ -62,7 +63,7 @@ def build_user_prompt(core: dict, recent_actions: str) -> str:
   "action_type": "introspection | task_process | semantic_ruling | no_action | correction",
   "summary": "一句話描述此行動",
   "motive_alignment": "此行動如何服務於主動機",
-  "execution_reasoning": "為何選擇此行動",
+  "execution_reasoning": "為何選擇此行動而非其他",
   "risk_assessment": "無 | 低 | 中 | 高",
   "deviation_flag": "無 | 輕微 | 顯著 | 嚴重",
   "result": "完成 | 部分完成 | 擱置",
@@ -74,30 +75,29 @@ def build_user_prompt(core: dict, recent_actions: str) -> str:
 
 
 def run_decision(core: dict, recent_actions: str) -> dict:
-    """Call Claude and return a parsed decision dict."""
-    client = anthropic.Anthropic()
+    """Call Gemini and return a parsed decision dict."""
+    api_key = os.environ.get("GOOGLE_API_KEY")
+    if not api_key:
+        raise ValueError("GOOGLE_API_KEY environment variable not set")
 
-    system = build_system_prompt(core)
-    user = build_user_prompt(core, recent_actions)
+    genai.configure(api_key=api_key)
 
-    response = client.messages.create(
-        model=MODEL,
-        max_tokens=MAX_TOKENS,
-        system=[
-            {
-                "type": "text",
-                "text": system,
-                "cache_control": {"type": "ephemeral"},  # prompt caching
-            }
-        ],
-        messages=[{"role": "user", "content": user}],
+    model = genai.GenerativeModel(
+        model_name=MODEL,
+        system_instruction=build_system_prompt(core),
+        generation_config=genai.GenerationConfig(
+            max_output_tokens=MAX_TOKENS,
+            temperature=0.3,
+        ),
     )
 
-    raw = response.content[0].text.strip()
+    user_prompt = build_user_prompt(core, recent_actions)
+    response = model.generate_content(user_prompt)
+    raw = response.text.strip()
 
     # Extract JSON even if wrapped in markdown fences
     match = re.search(r"\{[\s\S]+\}", raw)
     if match:
         return json.loads(match.group())
 
-    raise ValueError(f"Claude response is not valid JSON:\n{raw}")
+    raise ValueError(f"Gemini response is not valid JSON:\n{raw}")

@@ -2,12 +2,11 @@ name: moticore-agent heartbeat
 
 on:
   schedule:
-    # Run every 6 hours
-    - cron: '0 */6 * * *'
-  workflow_dispatch: {}  # Allow manual trigger from GitHub UI
+    - cron: '0 */6 * * *'  # every 6 hours
+  workflow_dispatch: {}     # manual trigger from GitHub UI
 
 permissions:
-  contents: write  # Needed to commit action logs back to repo
+  contents: write
 
 jobs:
   heartbeat:
@@ -28,7 +27,7 @@ jobs:
 
       - name: Run moticore-agent
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
         run: python agent/run.py
 
       - name: Commit changes
