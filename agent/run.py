@@ -9,13 +9,12 @@ from datetime import datetime
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).parent))
 
-from loader import load_core
+from loader import load_core, load_notes_index, load_recent_notes
 from memory import get_recent_actions, append_action
 from decision import run_decision, generate_file_content
 from issues import get_open_issues, post_comment, close_issue, format_issues_for_prompt
 from reader import get_next_chunk, save_cursor
 
-# Paths the agent is never allowed to modify
 PROTECTED = {"agent"}
 
 
@@ -38,20 +37,16 @@ def handle_file_operations(decision: dict, reading_chunk: str, core: dict, repo_
         raw_path = op.get("path", "")
         description = op.get("description", "")
         mode = op.get("mode", "append")
-
-        # Protect agent/ directory
         top = raw_path.strip("/").split("/")[0]
         if top in PROTECTED:
-            print(f"[run] BLOCKED: cannot modify protected path: {raw_path}")
+            print(f"[run] BLOCKED: {raw_path}")
             continue
-
-        print(f"[run] Generating content for {raw_path}...")
+        print(f"[run] Generating: {raw_path}")
         try:
             content = generate_file_content(core, reading_chunk, raw_path, description)
         except Exception as e:
-            print(f"[run] Warning: could not generate {raw_path}: {e}")
+            print(f"[run] Warning: {e}")
             continue
-
         file_path = repo_root / raw_path
         file_path.parent.mkdir(parents=True, exist_ok=True)
         if mode == "append":
@@ -80,15 +75,15 @@ def open_human_question_issue(github_token: str, question: str, context: str) ->
     print("[run] Human question Issue opened")
 
 
-def call_gemini_with_retry(core, recent, issues_text, reading_chunk, retries=3):
+def call_gemini_with_retry(core, recent, issues_text, reading_chunk, notes_index, recent_notes, retries=3):
     for attempt in range(retries):
         try:
-            return run_decision(core, recent, issues_text, reading_chunk)
+            return run_decision(core, recent, issues_text, reading_chunk, notes_index, recent_notes)
         except Exception as exc:
             msg = str(exc)
             if "503" in msg or "UNAVAILABLE" in msg:
                 wait = 2 ** (attempt + 1)
-                print(f"[run] Gemini 503, retrying in {wait}s... ({attempt+1}/{retries})")
+                print(f"[run] Gemini 503, retry in {wait}s ({attempt+1}/{retries})")
                 time.sleep(wait)
             else:
                 raise
@@ -101,20 +96,29 @@ def main() -> None:
     github_token = os.environ.get("GITHUB_TOKEN", "")
     dialogues_token = os.environ.get("DIALOGUES_TOKEN", "")
 
+    # 1. Motivation core
     core = load_core(REPO_ROOT)
-    print("[run] Motivation core loaded")
+    print("[run] Core loaded")
 
+    # 2. Long-term memory: notes index + recent notes
+    notes_index = load_notes_index(REPO_ROOT)
+    recent_notes = load_recent_notes(REPO_ROOT, n=3)
+    print("[run] Long-term memory loaded")
+
+    # 3. Short-term memory: action log
+    recent = get_recent_actions(REPO_ROOT, n=10)
+
+    # 4. Open Issues
     open_issues = []
     if github_token:
         try:
             open_issues = get_open_issues(github_token)
             print(f"[run] Open Issues: {len(open_issues)}")
         except Exception as e:
-            print(f"[run] Warning: could not fetch Issues: {e}")
-
+            print(f"[run] Warning: {e}")
     issues_text = format_issues_for_prompt(open_issues)
-    recent = get_recent_actions(REPO_ROOT, n=10)
 
+    # 5. Reading chunk from prima-materia
     reading_chunk = ""
     reading_context = ""
     new_cursor = None
@@ -124,22 +128,24 @@ def main() -> None:
             reading_chunk = result["chunk_text"]
             reading_context = result["conversation_title"]
             new_cursor = result["cursor"]
-            if result["finished"] and not reading_chunk:
-                print("[run] All dialogues finished")
-            else:
-                print(f"[run] Reading: {reading_context}")
+            print(f"[run] Reading: {reading_context}")
         except Exception as e:
-            print(f"[run] Warning: could not read prima-materia: {e}")
+            print(f"[run] Warning: {e}")
 
-    print("[run] Calling Gemini (decision)...")
+    # 6. Decision
+    print("[run] Calling Gemini...")
     try:
-        decision = call_gemini_with_retry(core, recent, issues_text, reading_chunk)
+        decision = call_gemini_with_retry(
+            core, recent, issues_text, reading_chunk, notes_index, recent_notes
+        )
     except Exception as exc:
-        print(f"[run] ERROR calling Gemini: {exc}")
+        print(f"[run] ERROR: {exc}")
         sys.exit(1)
 
     print(f"[run] Decision: {decision.get('action_type')} -- {decision.get('summary')}")
+    print(f"[run] Self-reflection: {decision.get('self_reflection', '')}")
 
+    # 7. Execute
     if github_token:
         handle_issue_responses(decision, github_token)
         human_q = decision.get("human_question", "").strip()

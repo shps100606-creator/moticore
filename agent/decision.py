@@ -20,7 +20,7 @@ def _client() -> genai.Client:
 
 
 def build_system_prompt(core: dict) -> str:
-    return f"""你是 moticore-agent，一個由以下動機核文件治理的自治代理智能體。
+    return f"""你是 moticore-agent，一個由動機核文件治理的自治代理智能體。
 
 ## 身份
 {core.get('identity', '')}
@@ -40,23 +40,40 @@ def build_system_prompt(core: dict) -> str:
 - 這段內容與我自身的動機核是否一致？
 - 它有沒有挺戰或修正我對自己存在的理解？
 - 我讀這段內容，對我的動機維持是幫助、矛盾、還是無關？
-- 如果有需要調整我的動機核文件，我會建議怎麼改？
 """
 
 
-def run_decision(core: dict, recent_actions: str, issues_text: str, reading_chunk: str = "") -> dict:
+def run_decision(
+    core: dict,
+    recent_actions: str,
+    issues_text: str,
+    reading_chunk: str,
+    notes_index: str,
+    recent_notes: str,
+) -> dict:
     """Step 1: lightweight decision JSON."""
     reading_section = ""
     if reading_chunk:
         reading_section = f"""### 本次閱讀片段（動機論原文）
 {reading_chunk}
 
-閱讀後請同時思考兩件事：
-1. 這段內容值得建立哪些筆記（只列路徑和一句描述）
-2. 這段內容對我自身的動機核有什麼影響：支持、矛盾、修正、或無關？
+閱讀後請同時思考：
+1. 這段內容值得建立哪些筆記
+2. 這段內容對我自身動機核的影響
+3. 是否需要更新 notes/INDEX.md
 """
 
-    prompt = f"""## 當前狀態
+    prompt = f"""## 我的長期記憶
+
+### 筆記目錄（notes/INDEX.md）
+{notes_index}
+
+### 最近修改的筆記
+{recent_notes}
+
+---
+
+## 當前狀態
 {reading_section}
 ### 待處理 Issues
 {issues_text}
@@ -70,13 +87,14 @@ def run_decision(core: dict, recent_actions: str, issues_text: str, reading_chun
 ---
 請回傳此 JSON（file_operations 只填 path 和 description，不要寫 content）。
 你可以對分支內任何路徑進行檔案操作，但不得修改 agent/ 目錄。
+每次操作筆記後，必須更新 notes/INDEX.md。
 
 {{
   "action_type": "reading|introspection|task_process|issue_response|no_action",
   "summary": "一句話",
-  "motive_alignment": "這次閱讀對我動機核的影響：支持|矛盾|修正|無關",
-  "self_reflection": "這段內容對我自身存在的意義是什麼",
-  "core_adjustment_needed": "若有需要調整動機核的地方，說明；否則留空",
+  "motive_alignment": "支持|矛盾|修正|無關",
+  "self_reflection": "這段內容對我自身存在的意義",
+  "core_adjustment_needed": "若動機核需要調整，說明；否則留空",
   "execution_reasoning": "",
   "risk_assessment": "無|低|中|高",
   "deviation_flag": "無|輕微|顯著|嚴重",
