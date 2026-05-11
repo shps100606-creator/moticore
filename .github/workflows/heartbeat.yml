@@ -1,0 +1,39 @@
+name: moticore-agent heartbeat
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # every 6 hours
+  workflow_dispatch: {}     # manual trigger from GitHub UI
+
+permissions:
+  contents: write
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: claude/motivation-core-prototype-njnn4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run moticore-agent
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        run: python agent/run.py
+
+      - name: Commit changes
+        run: |
+          git config user.name  "moticore-agent"
+          git config user.email "moticore-agent@users.noreply.github.com"
+          git add memory/action-log.md reports/
+          git diff --cached --quiet || git commit -m "chore(agent): heartbeat log $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push origin claude/motivation-core-prototype-njnn4
