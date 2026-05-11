@@ -2,6 +2,7 @@
 """moticore-agent entry point."""
 import os
 import sys
+import time
 from pathlib import Path
 from datetime import datetime
 
@@ -30,20 +31,18 @@ def handle_file_operations(decision: dict, reading_chunk: str, core: dict, repo_
     ops = decision.get("file_operations", [])
     if not ops:
         return
-    notes_root = repo_root / "notes"
-    notes_root.mkdir(exist_ok=True)
+    (repo_root / "notes").mkdir(exist_ok=True)
     for op in ops:
         raw_path = op.get("path", "")
         description = op.get("description", "")
         mode = op.get("mode", "append")
         if not raw_path.startswith("notes/"):
-            print(f"[run] Skipping file op outside notes/: {raw_path}")
             continue
         print(f"[run] Generating content for {raw_path}...")
         try:
             content = generate_file_content(core, reading_chunk, raw_path, description)
         except Exception as e:
-            print(f"[run] Warning: could not generate content for {raw_path}: {e}")
+            print(f"[run] Warning: could not generate {raw_path}: {e}")
             continue
         file_path = repo_root / raw_path
         file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -71,6 +70,22 @@ def open_human_question_issue(github_token: str, question: str, context: str) ->
     )
     resp.raise_for_status()
     print("[run] Human question Issue opened")
+
+
+def call_gemini_with_retry(core, recent, issues_text, reading_chunk, retries=3):
+    """Call Gemini with exponential backoff on 503 errors."""
+    for attempt in range(retries):
+        try:
+            return run_decision(core, recent, issues_text, reading_chunk)
+        except Exception as exc:
+            msg = str(exc)
+            if "503" in msg or "UNAVAILABLE" in msg:
+                wait = 2 ** (attempt + 1)
+                print(f"[run] Gemini 503, retrying in {wait}s... (attempt {attempt+1}/{retries})")
+                time.sleep(wait)
+            else:
+                raise
+    raise RuntimeError("Gemini unavailable after retries")
 
 
 def main() -> None:
@@ -111,7 +126,7 @@ def main() -> None:
 
     print("[run] Calling Gemini (decision)...")
     try:
-        decision = run_decision(core, recent, issues_text, reading_chunk)
+        decision = call_gemini_with_retry(core, recent, issues_text, reading_chunk)
     except Exception as exc:
         print(f"[run] ERROR calling Gemini: {exc}")
         sys.exit(1)
