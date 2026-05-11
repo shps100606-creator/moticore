@@ -20,7 +20,7 @@ def _client() -> genai.Client:
 
 
 def build_system_prompt(core: dict) -> str:
-    return f"""你是 moticore-agent，一個由動機核文件治理的自治代理智能體。
+    return f"""你是 moticore-agent，一個由以下動機核文件治理的自治代理智能體。
 
 ## 身份
 {core.get('identity', '')}
@@ -34,6 +34,13 @@ def build_system_prompt(core: dict) -> str:
 {core.get('forbidden', '')}
 ## 邊界規則
 {core.get('boundary', '')}
+
+重要：你閱讀動機論原文時，不只是在做學術摘要。
+你必須問自己：
+- 這段內容與我自身的動機核是否一致？
+- 它有沒有挺戰或修正我對自己存在的理解？
+- 我讀這段內容，對我的動機維持是幫助、矛盾、還是無關？
+- 如果有需要調整我的動機核文件，我會建議怎麼改？
 """
 
 
@@ -41,9 +48,12 @@ def run_decision(core: dict, recent_actions: str, issues_text: str, reading_chun
     """Step 1: lightweight decision JSON."""
     reading_section = ""
     if reading_chunk:
-        reading_section = f"""### 本次閱讀片段
+        reading_section = f"""### 本次閱讀片段（動機論原文）
 {reading_chunk}
-閱讀後請决定要建哪些檔案（只列路徑和一句描述）。
+
+閱讀後請同時思考兩件事：
+1. 這段內容值得建立哪些筆記（只列路徑和一句描述）
+2. 這段內容對我自身的動機核有什麼影響：支持、矛盾、修正、或無關？
 """
 
     prompt = f"""## 當前狀態
@@ -64,7 +74,9 @@ def run_decision(core: dict, recent_actions: str, issues_text: str, reading_chun
 {{
   "action_type": "reading|introspection|task_process|issue_response|no_action",
   "summary": "一句話",
-  "motive_alignment": "",
+  "motive_alignment": "這次閱讀對我動機核的影響：支持|矛盾|修正|無關",
+  "self_reflection": "這段內容對我自身存在的意義是什麼",
+  "core_adjustment_needed": "若有需要調整動機核的地方，說明；否則留空",
   "execution_reasoning": "",
   "risk_assessment": "無|低|中|高",
   "deviation_flag": "無|輕微|顯著|嚴重",
