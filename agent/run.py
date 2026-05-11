@@ -87,7 +87,7 @@ def call_gemini_with_retry(core, recent, issues_text, reading_chunk, notes_index
                 time.sleep(wait)
             else:
                 raise
-    raise RuntimeError("Gemini unavailable after retries")
+    return None  # signal: skip this heartbeat gracefully
 
 
 def main() -> None:
@@ -141,6 +141,10 @@ def main() -> None:
     except Exception as exc:
         print(f"[run] ERROR: {exc}")
         sys.exit(1)
+
+    if decision is None:
+        print("[run] Gemini unavailable, skipping heartbeat gracefully.")
+        sys.exit(0)
 
     print(f"[run] Decision: {decision.get('action_type')} -- {decision.get('summary')}")
     print(f"[run] Self-reflection: {decision.get('self_reflection', '')}")
