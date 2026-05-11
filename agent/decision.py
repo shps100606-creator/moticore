@@ -1,4 +1,9 @@
-"""Call Gemini API with motivation core as system prompt, get structured decision."""
+"""Call Gemini API with motivation core as system prompt, get structured decision.
+
+Two-step design:
+1. run_decision()      -> small JSON: what to do, which files to touch (no content)
+2. generate_content()  -> one call per file to generate actual note content
+"""
 import os
 import json
 import re
@@ -6,123 +11,108 @@ import google.generativeai as genai
 
 
 MODEL = "gemini-2.5-flash"
-MAX_TOKENS = 8192
+
+
+def _model(system: str, json_mode: bool = False) -> genai.GenerativeModel:
+    api_key = os.environ.get("GOOGLE_API_KEY")
+    if not api_key:
+        raise ValueError("GOOGLE_API_KEY environment variable not set")
+    genai.configure(api_key=api_key)
+    cfg = genai.GenerationConfig(
+        max_output_tokens=2048,
+        temperature=0.3,
+        **(dict(response_mime_type="application/json") if json_mode else {}),
+    )
+    return genai.GenerativeModel(model_name=MODEL, system_instruction=system, generation_config=cfg)
 
 
 def build_system_prompt(core: dict) -> str:
-    return f"""你是 moticore-agent，一個由以下動機核文件治理的自治代理智能體。
+    return f"""你是 moticore-agent，一個由動機核文件治理的自治代理智能體。
 
-你的存在目的與行動規範完全由以下文件決定。
-
----
 ## 身份
 {core.get('identity', '')}
-
----
 ## 主動機
 {core.get('prime_motive', '')}
-
----
 ## 價值排序
 {core.get('value_hierarchy', '')}
-
----
 ## 核心憲法
 {core.get('constitution', '')}
-
----
 ## 禁止模式
 {core.get('forbidden', '')}
-
----
 ## 邊界規則
 {core.get('boundary', '')}
-
-你每次被喚醒時，必須評估當前系統狀態，處理待處理的 GitHub Issue，閱讀一段動機論對話原文，並決定下一步行動。
-你的回應必須是合法的 JSON 物件。
-"""
-
-
-def build_user_prompt(core: dict, recent_actions: str, issues_text: str, reading_chunk: str) -> str:
-    reading_section = ""
-    if reading_chunk:
-        reading_section = f"""
-### 本次閱讀片段（動機論對話原文）
-{reading_chunk}
-
-閱讀指引：
-- 摘要這段對話的核心想法
-- 找出值得建立筆記的主題
-- 對於不明白或有趣的部分提出問題
-- 自己決定如何組織筆記（可按主題、按時間或其他方式）
-- 可以建立新資料夾或對現有筆記展開
-"""
-
-    return f"""## 當前系統狀態
-{reading_section}
-### 待處理 GitHub Issues
-{issues_text}
-
-### 最近行動記錄
-{recent_actions}
-
-### 任務收件匣
-{core.get('task_inbox', '（無待處理任務）')}
-
----
-
-請根據你的動機核評估當前狀態，回傳以下結構的 JSON：
-
-{{
-  "action_type": "reading | introspection | task_process | issue_response | no_action",
-  "summary": "一句話描述此行動",
-  "motive_alignment": "此行動如何服務於主動機",
-  "execution_reasoning": "為何選擇此行動",
-  "risk_assessment": "無 | 低 | 中 | 高",
-  "deviation_flag": "無 | 輕微 | 顯著 | 嚴重",
-  "result": "完成 | 部分完成 | 擱置",
-  "issue_responses": [
-    {{
-      "issue_number": 1,
-      "comment": "回覆內容",
-      "close": true
-    }}
-  ],
-  "file_operations": [
-    {{
-      "path": "notes/topics/主題名/概念.md",
-      "content": "筆記內容",
-      "mode": "create | append | overwrite"
-    }}
-  ],
-  "human_question": "若有想問對方的問題寫在這裡，否則留空字串"
-}}
-
-關於 file_operations：
-- 只能在 notes/ 目錄內操作
-- 必須自行維護 notes/INDEX.md 作為筆記目錄
-- 可以自由建立子目錄與檔案
+回應必須是合法 JSON 物件。
 """
 
 
 def run_decision(core: dict, recent_actions: str, issues_text: str, reading_chunk: str = "") -> dict:
-    """Call Gemini 2.5 Flash with JSON mode and return a parsed decision dict."""
-    api_key = os.environ.get("GOOGLE_API_KEY")
-    if not api_key:
-        raise ValueError("GOOGLE_API_KEY environment variable not set")
+    """Step 1: Get a lightweight decision JSON (no file content, only paths + descriptions)."""
+    reading_section = ""
+    if reading_chunk:
+        reading_section = f"""### 本次閱讀片段
+{reading_chunk}
 
-    genai.configure(api_key=api_key)
+閱讀後請决定：要建立哪些筆記檔案（只列路徑和一句話描述，不需寫內容）。
+"""
 
-    model = genai.GenerativeModel(
-        model_name=MODEL,
-        system_instruction=build_system_prompt(core),
-        generation_config=genai.GenerationConfig(
-            max_output_tokens=MAX_TOKENS,
-            temperature=0.3,
-            response_mime_type="application/json",
-        ),
-    )
+    prompt = f"""## 當前狀態
+{reading_section}
+### 待處理 Issues
+{issues_text}
 
-    user_prompt = build_user_prompt(core, recent_actions, issues_text, reading_chunk)
-    response = model.generate_content(user_prompt)
-    return json.loads(response.text)
+### 最近行動
+{recent_actions}
+
+### 任務收件匣
+{core.get('task_inbox', '（無）')}
+
+---
+請回傳此 JSON（file_operations 中只填 path 和 description，不要寫 content）：
+
+{{
+  "action_type": "reading | introspection | task_process | issue_response | no_action",
+  "summary": "一句話",
+  "motive_alignment": "",
+  "execution_reasoning": "",
+  "risk_assessment": "無|低|中|高",
+  "deviation_flag": "無|輕微|顯著|嚴重",
+  "result": "完成|部分完成|擱置",
+  "issue_responses": [{{
+    "issue_number": 0,
+    "comment": "",
+    "close": false
+  }}],
+  "file_operations": [{{
+    "path": "notes/路徑/檔名.md",
+    "description": "這個檔案要記錄什麼",
+    "mode": "create|append|overwrite"
+  }}],
+  "human_question": ""
+}}
+若無待處理 issue， issue_responses 為 []。若無筆記， file_operations 為 []。
+"""
+
+    m = _model(build_system_prompt(core), json_mode=True)
+    resp = m.generate_content(prompt)
+    return json.loads(resp.text)
+
+
+def generate_file_content(core: dict, reading_chunk: str, path: str, description: str) -> str:
+    """Step 2: Generate actual markdown content for a single note file."""
+    system = f"""你是 moticore-agent，正在撰寫動機論研究筆記。
+請基於提供的閱讀內容，撰寫指定筆記的 markdown 內容。
+直接輸出 markdown 內容，不要加任何 JSON 包裝。
+"""
+    prompt = f"""筆記路徑：{path}
+筆記用途：{description}
+
+相關閱讀內容：
+{reading_chunk[:4000]}
+
+請撰寫此筆記的 markdown 內容："""
+
+    m = _model(system, json_mode=False)
+    cfg = genai.GenerationConfig(max_output_tokens=4096, temperature=0.4)
+    m._generation_config = cfg
+    resp = m.generate_content(prompt)
+    return resp.text.strip()
