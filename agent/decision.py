@@ -5,9 +5,11 @@ Two-step design:
 2. generate_file_content() -> one call per file to generate actual note content
 """
 import os
+import re
 import json
 from google import genai
 from google.genai import types
+from json_repair import repair_json
 
 MODEL = "gemini-2.5-flash"
 
@@ -41,6 +43,23 @@ def build_system_prompt(core: dict) -> str:
 - 它有沒有挑戰或修正我對自己存在的理解？
 - 我讀這段內容，對我的動機維持是幫助、矛盾、還是無關？
 """
+
+
+def _parse_json(text: str) -> dict:
+    """Parse JSON from Gemini, repairing common issues like unescaped newlines."""
+    text = text.strip()
+    # strip markdown fences if present
+    if text.startswith("```"):
+        text = re.sub(r"^```[^\n]*\n", "", text)
+        text = re.sub(r"\n```$", "", text.strip())
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        # json-repair handles unterminated strings, unescaped newlines, trailing commas, etc.
+        repaired = repair_json(text, return_objects=True)
+        if isinstance(repaired, dict):
+            return repaired
+        raise ValueError(f"Cannot parse Gemini response as JSON: {text[:200]}")
 
 
 def run_decision(
@@ -85,35 +104,13 @@ def run_decision(
 {core.get('task_inbox', '(無)')}
 
 ---
-請回傳此 JSON（file_operations 只填 path 和 description，不要寫 content）。
-你可以對分支內任何路徑進行檔案操作，但不得修改 agent/ 目錄。
-每次操作筆記後，必須更新 notes/INDEX.md。
+請回傳此 JSON。所有字串內容必須在同一行，勿在字串內容中使用換行符。
+file_operations 只填 path 和 description，不要寫 content。
+不得修改 agent/ 目錄。每次操作筆記後必須更新 notes/INDEX.md。
 
 RETURN ONLY VALID JSON. No markdown fences, no extra text.
 
-{{
-  "action_type": "reading|introspection|task_process|issue_response|no_action",
-  "summary": "一句話",
-  "motive_alignment": "支持|矛盾|修正|無關",
-  "self_reflection": "這段內容對我自身存在的意義（純文字，勿含引號或換行）",
-  "core_adjustment_needed": "若動機核需要調整，說明；否則留空",
-  "execution_reasoning": "",
-  "risk_assessment": "無|低|中|高",
-  "deviation_flag": "無|輕微|顯著|嚴重",
-  "result": "完成|部分完成|擱置",
-  "issue_responses": [{{
-    "issue_number": 0,
-    "comment": "",
-    "close": false
-  }}],
-  "file_operations": [{{
-    "path": "任意路徑/檔名.md",
-    "description": "用途",
-    "mode": "create|append|overwrite"
-  }}],
-  "human_question": ""
-}}
-若無待處理 issue 則 issue_responses 為 []。若無檔案操作則 file_operations 為 []。
+{{"action_type": "reading|introspection|task_process|issue_response|no_action", "summary": "一句話", "motive_alignment": "支持|矛盾|修正|無關", "self_reflection": "對我存在的意義", "core_adjustment_needed": "", "execution_reasoning": "", "risk_assessment": "無|低|中|高", "deviation_flag": "無|輕微|顯著|嚴重", "result": "完成|部分完成|擱置", "issue_responses": [], "file_operations": [], "human_question": ""}}
 """
 
     client = _client()
@@ -127,12 +124,7 @@ RETURN ONLY VALID JSON. No markdown fences, no extra text.
             response_mime_type="application/json",
         ),
     )
-    raw = response.text.strip()
-    # strip markdown fences if model wraps despite instructions
-    if raw.startswith("```"):
-        raw = re.sub(r"^```[^\n]*\n", "", raw)
-        raw = re.sub(r"\n```$", "", raw.strip())
-    return json.loads(raw)
+    return _parse_json(response.text)
 
 
 def generate_file_content(core: dict, reading_chunk: str, path: str, description: str) -> str:
