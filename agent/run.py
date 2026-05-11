@@ -15,6 +15,9 @@ from decision import run_decision, generate_file_content
 from issues import get_open_issues, post_comment, close_issue, format_issues_for_prompt
 from reader import get_next_chunk, save_cursor
 
+# Paths the agent is never allowed to modify
+PROTECTED = {"agent"}
+
 
 def handle_issue_responses(decision: dict, github_token: str) -> None:
     for r in decision.get("issue_responses", []):
@@ -31,19 +34,24 @@ def handle_file_operations(decision: dict, reading_chunk: str, core: dict, repo_
     ops = decision.get("file_operations", [])
     if not ops:
         return
-    (repo_root / "notes").mkdir(exist_ok=True)
     for op in ops:
         raw_path = op.get("path", "")
         description = op.get("description", "")
         mode = op.get("mode", "append")
-        if not raw_path.startswith("notes/"):
+
+        # Protect agent/ directory
+        top = raw_path.strip("/").split("/")[0]
+        if top in PROTECTED:
+            print(f"[run] BLOCKED: cannot modify protected path: {raw_path}")
             continue
+
         print(f"[run] Generating content for {raw_path}...")
         try:
             content = generate_file_content(core, reading_chunk, raw_path, description)
         except Exception as e:
             print(f"[run] Warning: could not generate {raw_path}: {e}")
             continue
+
         file_path = repo_root / raw_path
         file_path.parent.mkdir(parents=True, exist_ok=True)
         if mode == "append":
@@ -73,7 +81,6 @@ def open_human_question_issue(github_token: str, question: str, context: str) ->
 
 
 def call_gemini_with_retry(core, recent, issues_text, reading_chunk, retries=3):
-    """Call Gemini with exponential backoff on 503 errors."""
     for attempt in range(retries):
         try:
             return run_decision(core, recent, issues_text, reading_chunk)
@@ -81,7 +88,7 @@ def call_gemini_with_retry(core, recent, issues_text, reading_chunk, retries=3):
             msg = str(exc)
             if "503" in msg or "UNAVAILABLE" in msg:
                 wait = 2 ** (attempt + 1)
-                print(f"[run] Gemini 503, retrying in {wait}s... (attempt {attempt+1}/{retries})")
+                print(f"[run] Gemini 503, retrying in {wait}s... ({attempt+1}/{retries})")
                 time.sleep(wait)
             else:
                 raise

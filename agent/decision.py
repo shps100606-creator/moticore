@@ -38,12 +38,12 @@ def build_system_prompt(core: dict) -> str:
 
 
 def run_decision(core: dict, recent_actions: str, issues_text: str, reading_chunk: str = "") -> dict:
-    """Step 1: lightweight decision JSON (paths + descriptions only, no file content)."""
+    """Step 1: lightweight decision JSON."""
     reading_section = ""
     if reading_chunk:
         reading_section = f"""### 本次閱讀片段
 {reading_chunk}
-閱讀後請决定要建哪些筆記（只列路徑和一句描述）。
+閱讀後請决定要建哪些檔案（只列路徑和一句描述）。
 """
 
     prompt = f"""## 當前狀態
@@ -58,7 +58,9 @@ def run_decision(core: dict, recent_actions: str, issues_text: str, reading_chun
 {core.get('task_inbox', '(無)')}
 
 ---
-請回傳以下 JSON（file_operations 只填 path 和 description，不要寫 content）：
+請回傳此 JSON（file_operations 只填 path 和 description，不要寫 content）。
+你可以對分支內任何路徑進行檔案操作，但不得修改 agent/ 目錄。
+
 {{
   "action_type": "reading|introspection|task_process|issue_response|no_action",
   "summary": "一句話",
@@ -73,13 +75,13 @@ def run_decision(core: dict, recent_actions: str, issues_text: str, reading_chun
     "close": false
   }}],
   "file_operations": [{{
-    "path": "notes/path/file.md",
+    "path": "任意路徑/檔名.md",
     "description": "用途",
     "mode": "create|append|overwrite"
   }}],
   "human_question": ""
 }}
-若無待處理 issue 則 issue_responses 為 []。若無筆記則 file_operations 為 []。
+若無待處理 issue 則 issue_responses 為 []。若無檔案操作則 file_operations 為 []。
 """
 
     client = _client()
@@ -97,21 +99,21 @@ def run_decision(core: dict, recent_actions: str, issues_text: str, reading_chun
 
 
 def generate_file_content(core: dict, reading_chunk: str, path: str, description: str) -> str:
-    """Step 2: generate actual markdown content for a single note file."""
-    prompt = f"""筆記路徑：{path}
-筆記用途：{description}
+    """Step 2: generate actual markdown content for a single file."""
+    prompt = f"""檔案路徑：{path}
+檔案用途：{description}
 
 相關閱讀內容：
 {reading_chunk[:4000]}
 
-請撰寫此筆記的 markdown 內容："""
+請撰寫此檔案的 markdown 內容："""
 
     client = _client()
     response = client.models.generate_content(
         model=MODEL,
         contents=prompt,
         config=types.GenerateContentConfig(
-            system_instruction="你是 moticore-agent，正在撰寫動機論研究筆記。直接輸出 markdown 內容，不要加 JSON 包裝。",
+            system_instruction="你是 moticore-agent，正在撰寫研究筆記或文件。直接輸出 markdown 內容，不要加 JSON 包裝。",
             max_output_tokens=4096,
             temperature=0.4,
         ),
