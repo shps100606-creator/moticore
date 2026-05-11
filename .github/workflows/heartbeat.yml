@@ -2,11 +2,14 @@ name: moticore-agent heartbeat
 
 on:
   schedule:
-    - cron: '0 */6 * * *'  # every 6 hours
-  workflow_dispatch: {}     # manual trigger from GitHub UI
+    - cron: '0 */6 * * *'
+  workflow_dispatch: {}
 
 permissions:
   contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   heartbeat:
