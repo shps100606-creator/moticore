@@ -6,7 +6,7 @@ import google.generativeai as genai
 
 
 MODEL = "gemini-2.5-flash"
-MAX_TOKENS = 3000
+MAX_TOKENS = 8192
 
 
 def build_system_prompt(core: dict) -> str:
@@ -40,6 +40,7 @@ def build_system_prompt(core: dict) -> str:
 
 你每次被喚醒時，必須評估當前系統狀態，處理待處理的 GitHub Issue，並決定下一步行動。
 你的回應必須是合法的 JSON，不得包含任何 JSON 以外的文字。
+請直接輸出 JSON 物件，不要加任何 markdown 代碼區塊（不要使用 ```json 等標記）。
 """
 
 
@@ -60,13 +61,14 @@ def build_user_prompt(core: dict, recent_actions: str, issues_text: str) -> str:
 
 ---
 
-請根據你的動機核評估當前狀態，以以下 JSON 格式回應：
+請根據你的動機核評估當前狀態，以以下 JSON 格式回應。
+不要使用 markdown 代碼區塊，直接輸出純粹的 JSON：
 
 {{
   "action_type": "introspection | task_process | issue_response | semantic_ruling | no_action | correction",
   "summary": "一句話描述此行動",
   "motive_alignment": "此行動如何服務於主動機",
-  "execution_reasoning": "為何選擇此行動而非其他",
+  "execution_reasoning": "為何選擇此行動",
   "risk_assessment": "無 | 低 | 中 | 高",
   "deviation_flag": "無 | 輕微 | 顯著 | 嚴重",
   "result": "完成 | 部分完成 | 擱置",
@@ -76,12 +78,11 @@ def build_user_prompt(core: dict, recent_actions: str, issues_text: str) -> str:
   "issue_responses": [
     {{
       "issue_number": 1,
-      "comment": "回覆內容（繁體中文，說明你如何處理此任務）",
+      "comment": "回覆內容",
       "close": true
     }}
   ]
 }}
-
 若無待處理 Issue， issue_responses 為空陣列 []。
 """
 
@@ -107,8 +108,16 @@ def run_decision(core: dict, recent_actions: str, issues_text: str) -> dict:
     response = model.generate_content(user_prompt)
     raw = response.text.strip()
 
-    match = re.search(r"\{[\s\S]+\}", raw)
-    if match:
-        return json.loads(match.group())
+    # Strip markdown code fences if present
+    raw = re.sub(r"^```(?:json)?\s*", "", raw)
+    raw = re.sub(r"\s*```$", "", raw)
+    raw = raw.strip()
 
-    raise ValueError(f"Gemini response is not valid JSON:\n{raw}")
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        # Fall back to regex extraction
+        match = re.search(r"\{[\s\S]+\}", raw)
+        if match:
+            return json.loads(match.group())
+        raise ValueError(f"Gemini response is not valid JSON:\n{raw[:500]}")
