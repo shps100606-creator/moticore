@@ -1,29 +1,30 @@
 """Call Gemini API with motivation core as system prompt, get structured decision.
 
 Two-step design:
-1. run_decision()      -> small JSON: what to do, which files to touch (no content)
-2. generate_content()  -> one call per file to generate actual note content
+1. run_decision()       -> small JSON: what to do, which files to touch (no content)
+2. generate_file_content() -> one call per file to generate actual note content
 """
 import os
 import json
-import re
 import google.generativeai as genai
 
 
 MODEL = "gemini-2.5-flash"
 
 
-def _model(system: str, json_mode: bool = False) -> genai.GenerativeModel:
+def _make_model(system: str, max_tokens: int = 2048, json_mode: bool = False) -> genai.GenerativeModel:
     api_key = os.environ.get("GOOGLE_API_KEY")
     if not api_key:
         raise ValueError("GOOGLE_API_KEY environment variable not set")
     genai.configure(api_key=api_key)
-    cfg = genai.GenerationConfig(
-        max_output_tokens=2048,
-        temperature=0.3,
-        **(dict(response_mime_type="application/json") if json_mode else {}),
+    kwargs = dict(max_output_tokens=max_tokens, temperature=0.3)
+    if json_mode:
+        kwargs["response_mime_type"] = "application/json"
+    return genai.GenerativeModel(
+        model_name=MODEL,
+        system_instruction=system,
+        generation_config=genai.GenerationConfig(**kwargs),
     )
-    return genai.GenerativeModel(model_name=MODEL, system_instruction=system, generation_config=cfg)
 
 
 def build_system_prompt(core: dict) -> str:
@@ -92,17 +93,17 @@ def run_decision(core: dict, recent_actions: str, issues_text: str, reading_chun
 若無待處理 issue， issue_responses 為 []。若無筆記， file_operations 為 []。
 """
 
-    m = _model(build_system_prompt(core), json_mode=True)
+    m = _make_model(build_system_prompt(core), max_tokens=2048, json_mode=True)
     resp = m.generate_content(prompt)
     return json.loads(resp.text)
 
 
 def generate_file_content(core: dict, reading_chunk: str, path: str, description: str) -> str:
     """Step 2: Generate actual markdown content for a single note file."""
-    system = f"""你是 moticore-agent，正在撰寫動機論研究筆記。
+    system = """你是 moticore-agent，正在撰寫動機論研究筆記。
 請基於提供的閱讀內容，撰寫指定筆記的 markdown 內容。
-直接輸出 markdown 內容，不要加任何 JSON 包裝。
-"""
+直接輸出 markdown 內容，不要加任何 JSON 包裝。"""
+
     prompt = f"""筆記路徑：{path}
 筆記用途：{description}
 
@@ -111,8 +112,6 @@ def generate_file_content(core: dict, reading_chunk: str, path: str, description
 
 請撰寫此筆記的 markdown 內容："""
 
-    m = _model(system, json_mode=False)
-    cfg = genai.GenerationConfig(max_output_tokens=4096, temperature=0.4)
-    m._generation_config = cfg
+    m = _make_model(system, max_tokens=4096, json_mode=False)
     resp = m.generate_content(prompt)
     return resp.text.strip()
