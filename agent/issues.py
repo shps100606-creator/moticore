@@ -48,7 +48,7 @@ def close_issue(token: str, issue_number: int) -> None:
 def _sanitize(text: str, max_len: int = 200) -> str:
     """Strip markdown special chars and truncate for safe prompt embedding."""
     text = re.sub(r"```[\s\S]*?```", "[code block]", text)  # remove code fences
-    text = re.sub(r"[`*#\[\]]", "", text)                   # remove inline markdown
+    text = re.sub(r"[`*#\[\]{}]", "", text)                  # remove inline markdown + braces
     text = re.sub(r"\s+", " ", text).strip()
     return text[:max_len]
 

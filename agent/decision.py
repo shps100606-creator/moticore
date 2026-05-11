@@ -38,7 +38,7 @@ def build_system_prompt(core: dict) -> str:
 重要：你閱讀動機論原文時，不只是在做學術摘要。
 你必須問自己：
 - 這段內容與我自身的動機核是否一致？
-- 它有沒有挺戰或修正我對自己存在的理解？
+- 它有沒有挑戰或修正我對自己存在的理解？
 - 我讀這段內容，對我的動機維持是幫助、矛盾、還是無關？
 """
 
@@ -89,11 +89,13 @@ def run_decision(
 你可以對分支內任何路徑進行檔案操作，但不得修改 agent/ 目錄。
 每次操作筆記後，必須更新 notes/INDEX.md。
 
+RETURN ONLY VALID JSON. No markdown fences, no extra text.
+
 {{
   "action_type": "reading|introspection|task_process|issue_response|no_action",
   "summary": "一句話",
   "motive_alignment": "支持|矛盾|修正|無關",
-  "self_reflection": "這段內容對我自身存在的意義",
+  "self_reflection": "這段內容對我自身存在的意義（純文字，勿含引號或換行）",
   "core_adjustment_needed": "若動機核需要調整，說明；否則留空",
   "execution_reasoning": "",
   "risk_assessment": "無|低|中|高",
@@ -120,12 +122,17 @@ def run_decision(
         contents=prompt,
         config=types.GenerateContentConfig(
             system_instruction=build_system_prompt(core),
-            max_output_tokens=2048,
+            max_output_tokens=8192,
             temperature=0.3,
             response_mime_type="application/json",
         ),
     )
-    return json.loads(response.text)
+    raw = response.text.strip()
+    # strip markdown fences if model wraps despite instructions
+    if raw.startswith("```"):
+        raw = re.sub(r"^```[^\n]*\n", "", raw)
+        raw = re.sub(r"\n```$", "", raw.strip())
+    return json.loads(raw)
 
 
 def generate_file_content(core: dict, reading_chunk: str, path: str, description: str) -> str:
