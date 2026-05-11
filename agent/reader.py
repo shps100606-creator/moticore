@@ -1,17 +1,16 @@
 """Read 動機論 markdown files from prima-materia repo sequentially.
 
-Cursor tracks: which file index, which character offset within that file.
-Each heartbeat reads CHUNK_CHARS characters from the current position.
+Each heartbeat reads up to CHUNK_CHARS from the current file.
+When a file is finished, moves to the next one.
 """
 import json
-import os
 import requests
 from pathlib import Path
 
 PRIMA_OWNER = "shps100606-creator"
 PRIMA_REPO = "prima-materia"
 DIALOGUES_PATH = "dialogues"
-CHUNK_CHARS = 3000
+CHUNK_CHARS = 20000
 
 CHINESE_ORDER = [
     "第一", "第二", "第三", "第四", "第五", "第六", "第七", "第八", "第九",
@@ -31,7 +30,6 @@ def _headers(token: str) -> dict:
 
 
 def _list_md_files(token: str) -> list:
-    """Return sorted list of 動機論*.md filenames in CHINESE_ORDER."""
     resp = requests.get(
         f"https://api.github.com/repos/{PRIMA_OWNER}/{PRIMA_REPO}/contents/{DIALOGUES_PATH}",
         headers=_headers(token),
@@ -49,7 +47,6 @@ def _list_md_files(token: str) -> list:
 
 
 def _fetch_file(token: str, filename: str) -> str:
-    """Fetch raw content of a file from prima-materia."""
     resp = requests.get(
         f"https://api.github.com/repos/{PRIMA_OWNER}/{PRIMA_REPO}/contents/{DIALOGUES_PATH}/{filename}",
         headers={**_headers(token), "Accept": "application/vnd.github.raw+json"},
@@ -72,7 +69,6 @@ def save_cursor(repo_root: Path, cursor: dict) -> None:
 
 
 def get_next_chunk(token: str, repo_root: Path) -> dict:
-    """Return next chunk of dialogue text and updated cursor."""
     cursor = load_cursor(repo_root)
 
     if cursor.get("finished"):
@@ -90,6 +86,7 @@ def get_next_chunk(token: str, repo_root: Path) -> dict:
 
     new_offset = offset + len(chunk)
     if new_offset >= len(content):
+        # Finished this file, move to next
         cursor["file_index"] += 1
         cursor["char_offset"] = 0
         if cursor["file_index"] >= len(files):
@@ -98,6 +95,9 @@ def get_next_chunk(token: str, repo_root: Path) -> dict:
         cursor["char_offset"] = new_offset
 
     title = filename.replace(".md", "")
+    progress = f"{cursor['file_index']+1 if not cursor.get('finished') else len(files)}/{len(files)}"
+    print(f"[reader] {title} offset={offset} chunk={len(chunk)} files={progress}")
+
     return {
         "chunk_text": chunk,
         "conversation_title": title,
