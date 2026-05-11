@@ -5,7 +5,8 @@ import re
 import google.generativeai as genai
 
 
-MODEL = "gemini-2.0-flash"
+# gemini-2.0-flash deprecated 2026-06-01; using gemini-2.5-flash (free tier available)
+MODEL = "gemini-2.5-flash"
 MAX_TOKENS = 2048
 
 
@@ -75,7 +76,7 @@ def build_user_prompt(core: dict, recent_actions: str) -> str:
 
 
 def run_decision(core: dict, recent_actions: str) -> dict:
-    """Call Gemini and return a parsed decision dict."""
+    """Call Gemini 2.5 Flash and return a parsed decision dict."""
     api_key = os.environ.get("GOOGLE_API_KEY")
     if not api_key:
         raise ValueError("GOOGLE_API_KEY environment variable not set")
