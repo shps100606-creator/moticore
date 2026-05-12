@@ -6,6 +6,8 @@ GITHUB_API = "https://api.github.com"
 OWNER = "shps100606-creator"
 REPO = "moticore"
 
+PROGRESS_ISSUE = 7  # fixed dashboard issue — skip comments for this one
+
 
 def _headers(token: str) -> dict:
     return {
@@ -23,6 +25,18 @@ def get_open_issues(token: str) -> list:
     )
     resp.raise_for_status()
     return [i for i in resp.json() if "pull_request" not in i]
+
+
+def get_issue_comments(token: str, issue_number: int, max_comments: int = 5) -> list:
+    """Fetch the latest comments on an issue (human replies)."""
+    resp = requests.get(
+        f"{GITHUB_API}/repos/{OWNER}/{REPO}/issues/{issue_number}/comments",
+        headers=_headers(token),
+        params={"per_page": max_comments, "direction": "desc"},
+    )
+    if not resp.ok:
+        return []
+    return resp.json()
 
 
 def post_comment(token: str, issue_number: int, body: str) -> None:
@@ -47,18 +61,42 @@ def close_issue(token: str, issue_number: int) -> None:
 
 def _sanitize(text: str, max_len: int = 200) -> str:
     """Strip markdown special chars and truncate for safe prompt embedding."""
-    text = re.sub(r"```[\s\S]*?```", "[code block]", text)  # remove code fences
-    text = re.sub(r"[`*#\[\]{}]", "", text)                  # remove inline markdown + braces
+    text = re.sub(r"```[\s\S]*?```", "[code block]", text)
+    text = re.sub(r"[`*#\[\]{}\"]", "", text)
     text = re.sub(r"\s+", " ", text).strip()
     return text[:max_len]
 
 
-def format_issues_for_prompt(issues: list) -> str:
+def format_issues_for_prompt(issues: list, token: str = "") -> str:
     if not issues:
         return "（目前無待處理 Issue）"
     lines = []
     for i in issues:
+        num = i["number"]
         title = _sanitize(i.get("title", ""), 80)
         body = _sanitize(i.get("body") or "", 200)
-        lines.append(f"- Issue #{i['number']}: {title}\n  內容: {body}")
+
+        # skip fetching comments for the progress dashboard issue
+        comments_text = ""
+        if token and num != PROGRESS_ISSUE:
+            comments = get_issue_comments(token, num, max_comments=5)
+            # filter out bot's own comments (github-actions)
+            human_comments = [
+                c for c in comments
+                if c.get("user", {}).get("type") != "Bot"
+                and "github-actions" not in c.get("user", {}).get("login", "")
+            ]
+            if human_comments:
+                # show latest 3 human replies
+                snippets = [
+                    f"    [{c['user']['login']}]: {_sanitize(c['body'], 150)}"
+                    for c in human_comments[-3:]
+                ]
+                comments_text = "\n  人類回覆:\n" + "\n".join(snippets)
+
+        lines.append(
+            f"- Issue #{num}: {title}\n"
+            f"  內容: {body}"
+            f"{comments_text}"
+        )
     return "\n".join(lines)
