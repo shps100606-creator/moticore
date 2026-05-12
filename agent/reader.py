@@ -20,6 +20,9 @@ CHINESE_ORDER = [
     "第二十六", "第二十七", "第二十八", "第二十九",
 ]
 
+# sorted longest-first so "第二十一" is matched before "第二十" before "第二"
+_ORDER_BY_LEN = sorted(enumerate(CHINESE_ORDER), key=lambda x: len(x[1]), reverse=True)
+
 
 def _headers(token: str) -> dict:
     return {
@@ -38,9 +41,9 @@ def _list_md_files(token: str) -> list:
     files = [f["name"] for f in resp.json() if f["name"].endswith(".md")]
 
     def sort_key(name):
-        for i, num in enumerate(CHINESE_ORDER):
+        for idx, num in _ORDER_BY_LEN:
             if num in name:
-                return i
+                return idx
         return 999
 
     return sorted(files, key=sort_key)
