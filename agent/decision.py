@@ -111,6 +111,8 @@ file_operations 只填 path 和 description，不要寫 content。
 
 read_next 列表下次心跳你想主動閱讀的檔案路徑（最多 8 份，用對 repo 根目錄的相對路徑）。
 
+【重要規則】如果「待處理 Issues」中有任何 Issue 包含「人類回覆」欄位，你必須在 issue_responses 中針對該 Issue 回覆，確認你已閱讀並理解對方的回應，並繼續對話。不得忽略人類的回覆。
+
 RETURN ONLY VALID JSON. No markdown fences.
 
 {{"action_type": "reading|introspection|task_process|issue_response|no_action", "summary": "一句話", "motive_alignment": "支持|矛盾|修正|無關", "self_reflection": "對我存在的意義", "core_adjustment_needed": "", "risk_assessment": "無|低|中|高", "deviation_flag": "無|輕微|顯著|嚴重", "result": "完成|部分完成|擱置", "issue_responses": [], "file_operations": [], "read_next": [], "human_question": ""}}
