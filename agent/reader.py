@@ -2,6 +2,9 @@
 
 Each heartbeat reads up to CHUNK_CHARS from the current file.
 When a file is finished, moves to the next one.
+
+Files are expected to have numeric prefixes (01-, 02-, ..., 29-)
+so plain alphabetical sort gives the correct reading order.
 """
 import json
 import requests
@@ -11,17 +14,6 @@ PRIMA_OWNER = "shps100606-creator"
 PRIMA_REPO = "prima-materia"
 DIALOGUES_PATH = "dialogues"
 CHUNK_CHARS = 20000
-
-CHINESE_ORDER = [
-    "第一", "第二", "第三", "第四", "第五", "第六", "第七", "第八", "第九",
-    "第十", "第十一", "第十二", "第十三", "第十四", "第十五",
-    "第十六", "第十七", "第十八", "第十九",
-    "第二十", "第二十一", "第二十二", "第二十三", "第二十四", "第二十五",
-    "第二十六", "第二十七", "第二十八", "第二十九",
-]
-
-# sorted longest-first so "第二十一" is matched before "第二十" before "第二"
-_ORDER_BY_LEN = sorted(enumerate(CHINESE_ORDER), key=lambda x: len(x[1]), reverse=True)
 
 
 def _headers(token: str) -> dict:
@@ -38,15 +30,8 @@ def _list_md_files(token: str) -> list:
         headers=_headers(token),
     )
     resp.raise_for_status()
-    files = [f["name"] for f in resp.json() if f["name"].endswith(".md")]
-
-    def sort_key(name):
-        for idx, num in _ORDER_BY_LEN:
-            if num in name:
-                return idx
-        return 999
-
-    return sorted(files, key=sort_key)
+    files = sorted(f["name"] for f in resp.json() if f["name"].endswith(".md"))
+    return files
 
 
 def _fetch_file(token: str, filename: str) -> str:
@@ -89,7 +74,6 @@ def get_next_chunk(token: str, repo_root: Path) -> dict:
 
     new_offset = offset + len(chunk)
     if new_offset >= len(content):
-        # Finished this file, move to next
         cursor["file_index"] += 1
         cursor["char_offset"] = 0
         if cursor["file_index"] >= len(files):
@@ -98,8 +82,9 @@ def get_next_chunk(token: str, repo_root: Path) -> dict:
         cursor["char_offset"] = new_offset
 
     title = filename.replace(".md", "")
-    progress = f"{cursor['file_index']+1 if not cursor.get('finished') else len(files)}/{len(files)}"
-    print(f"[reader] {title} offset={offset} chunk={len(chunk)} files={progress}")
+    total = len(files)
+    display_idx = min(cursor["file_index"] + 1, total)
+    print(f"[reader] {title} offset={offset} chunk={len(chunk)} files={display_idx}/{total}")
 
     return {
         "chunk_text": chunk,
