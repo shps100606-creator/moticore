@@ -16,23 +16,22 @@ from issues import get_open_issues, post_comment, close_issue, format_issues_for
 from reader import get_next_chunk, save_cursor
 
 PROTECTED = {"agent"}
-PROGRESS_ISSUE = 7  # fixed issue for heartbeat progress reports
+PROGRESS_ISSUE = 7
 
 
 def post_progress_report(github_token: str, reading_context: str, cursor: dict,
                          decision: dict, chunk_len: int) -> None:
-    """Post a short progress comment to the fixed progress issue."""
     now = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
     file_idx = cursor.get("file_index", 0) + 1 if cursor else "?"
     char_off = cursor.get("char_offset", 0) if cursor else "?"
     finished = cursor.get("finished", False) if cursor else False
 
     if finished:
-        progress_line = "**全部讀完！**"
+        progress_line = "全部讀完！"
     else:
-        progress_line = f"第 {file_idx}/29 篇 《{reading_context}》 ，已讀至第 {char_off:,} 字"
+        progress_line = f"第 {file_idx}/29 篇 《{reading_context}》，已讀至第 {char_off:,} 字"
 
-    reflection = decision.get("self_reflection", "").strip()[:120] if decision else "本次跟過（Gemini 暫時不可用）"
+    reflection = decision.get("self_reflection", "").strip()[:120] if decision else "本次跳過（Gemini 暫時不可用）"
     summary = decision.get("summary", "").strip()[:80] if decision else ""
 
     comment = f"""**{now}**
@@ -52,7 +51,7 @@ def handle_issue_responses(decision: dict, github_token: str) -> None:
         if not num or not comment:
             continue
         if num == PROGRESS_ISSUE:
-            continue  # don't let agent free-write to progress issue
+            continue
         post_comment(github_token, num, comment)
         if r.get("close", False):
             close_issue(github_token, num)
@@ -142,7 +141,8 @@ def main() -> None:
             print(f"[run] Open Issues: {len(open_issues)}")
         except Exception as e:
             print(f"[run] Warning: {e}")
-    issues_text = format_issues_for_prompt(open_issues)
+    # pass token so comments (human replies) are fetched
+    issues_text = format_issues_for_prompt(open_issues, token=github_token)
 
     reading_chunk = ""
     reading_context = ""
