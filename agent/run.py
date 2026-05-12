@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """moticore-agent entry point."""
+import json
 import os
 import sys
 import time
@@ -9,7 +10,7 @@ from datetime import datetime
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).parent))
 
-from loader import load_core, load_notes_index, load_recent_notes
+from loader import load_core, load_system_manifest, load_requested_files
 from memory import get_recent_actions, append_action
 from decision import run_decision, generate_file_content
 from issues import get_open_issues, post_comment, close_issue, format_issues_for_prompt
@@ -19,52 +20,46 @@ PROTECTED = {"agent"}
 PROGRESS_ISSUE = 7
 
 
-def post_progress_report(github_token: str, reading_context: str, cursor: dict,
-                         decision: dict, chunk_len: int) -> None:
+def post_progress_report(github_token, reading_context, cursor, decision, chunk_len):
     now = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
     file_idx = cursor.get("file_index", 0) + 1 if cursor else "?"
     char_off = cursor.get("char_offset", 0) if cursor else "?"
     finished = cursor.get("finished", False) if cursor else False
-
-    if finished:
-        progress_line = "全部讀完！"
-    else:
-        progress_line = f"第 {file_idx}/29 篇 《{reading_context}》，已讀至第 {char_off:,} 字"
-
+    progress_line = "全部讀完！" if finished else f"第 {file_idx}/29 篇 《{reading_context}》，已讀至第 {char_off:,} 字"
     reflection = decision.get("self_reflection", "").strip()[:120] if decision else "本次跳過（Gemini 暫時不可用）"
     summary = decision.get("summary", "").strip()[:80] if decision else ""
-
-    comment = f"""**{now}**
-
-📖 {progress_line}
-💡 {summary}
-🧠 {reflection}"""
-
-    post_comment(github_token, PROGRESS_ISSUE, comment)
+    post_comment(github_token, PROGRESS_ISSUE,
+                 f"**{now}**\n\n📖 {progress_line}\n💡 {summary}\n🧠 {reflection}")
     print(f"[run] Progress posted to Issue #{PROGRESS_ISSUE}")
 
 
-def handle_issue_responses(decision: dict, github_token: str) -> None:
+def handle_issue_responses(decision, github_token):
     for r in decision.get("issue_responses", []):
         num = r.get("issue_number")
         comment = r.get("comment", "")
-        if not num or not comment:
-            continue
-        if num == PROGRESS_ISSUE:
+        if not num or not comment or num == PROGRESS_ISSUE:
             continue
         post_comment(github_token, num, comment)
         if r.get("close", False):
             close_issue(github_token, num)
 
 
-def handle_file_operations(decision: dict, reading_chunk: str, core: dict, repo_root: Path) -> None:
+def save_read_requests(repo_root: Path, read_next: list):
+    """Persist the agent's file requests for next heartbeat."""
+    req_path = repo_root / "memory" / "read-requests.json"
+    req_path.parent.mkdir(parents=True, exist_ok=True)
+    req_path.write_text(json.dumps(read_next, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"[run] Read requests saved: {read_next}")
+
+
+def handle_file_operations(decision, reading_chunk, core, repo_root):
     ops = decision.get("file_operations", [])
     if not ops:
         return
     for op in ops:
         raw_path = op.get("path", "")
         description = op.get("description", "")
-        mode = op.get("mode", "append")
+        mode = op.get("mode", "create")
         top = raw_path.strip("/").split("/")[0]
         if top in PROTECTED:
             print(f"[run] BLOCKED: {raw_path}")
@@ -85,32 +80,29 @@ def handle_file_operations(decision: dict, reading_chunk: str, core: dict, repo_
         print(f"[run] Written: {raw_path}")
 
 
-def open_human_question_issue(github_token: str, question: str, context: str) -> None:
+def open_human_question_issue(github_token, question, context):
     from issues import OWNER, REPO
     import requests
-    headers = {
-        "Authorization": f"Bearer {github_token}",
-        "Accept": "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-    }
+    headers = {"Authorization": f"Bearer {github_token}",
+               "Accept": "application/vnd.github+json",
+               "X-GitHub-Api-Version": "2022-11-28"}
     body = f"{question}\n\n---\n_閱讀脈絡：{context}_"
-    resp = requests.post(
-        f"https://api.github.com/repos/{OWNER}/{REPO}/issues",
-        headers=headers,
-        json={"title": f"[代理提問] {question[:60]}", "body": body},
-    )
-    resp.raise_for_status()
+    requests.post(f"https://api.github.com/repos/{OWNER}/{REPO}/issues",
+                  headers=headers,
+                  json={"title": f"[代理提問] {question[:60]}", "body": body}).raise_for_status()
     print("[run] Human question Issue opened")
 
 
-def call_gemini_with_retry(core, recent, issues_text, reading_chunk, notes_index, recent_notes, retries=4):
+def call_gemini_with_retry(core, recent, issues_text, reading_chunk,
+                           system_manifest, requested_files, retries=4):
     waits = [10, 20, 40, 60]
     for attempt in range(retries):
         try:
-            return run_decision(core, recent, issues_text, reading_chunk, notes_index, recent_notes)
+            return run_decision(core, recent, issues_text, reading_chunk,
+                                system_manifest, requested_files)
         except Exception as exc:
             msg = str(exc)
-            if "503" in msg or "UNAVAILABLE" in msg or "429" in msg or "RESOURCE_EXHAUSTED" in msg:
+            if any(k in msg for k in ["503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED"]):
                 wait = waits[attempt]
                 print(f"[run] Gemini unavailable, retry in {wait}s ({attempt+1}/{retries})")
                 time.sleep(wait)
@@ -119,7 +111,7 @@ def call_gemini_with_retry(core, recent, issues_text, reading_chunk, notes_index
     return None
 
 
-def main() -> None:
+def main():
     print(f"[run] moticore-agent started at {datetime.utcnow().isoformat()}Z")
 
     github_token = os.environ.get("GITHUB_TOKEN", "")
@@ -128,9 +120,9 @@ def main() -> None:
     core = load_core(REPO_ROOT)
     print("[run] Core loaded")
 
-    notes_index = load_notes_index(REPO_ROOT)
-    recent_notes = load_recent_notes(REPO_ROOT, n=3)
-    print("[run] Long-term memory loaded")
+    system_manifest = load_system_manifest(REPO_ROOT)
+    requested_files = load_requested_files(REPO_ROOT)
+    print(f"[run] System manifest loaded, {len(requested_files)} chars of requested files")
 
     recent = get_recent_actions(REPO_ROOT, n=10)
 
@@ -141,7 +133,6 @@ def main() -> None:
             print(f"[run] Open Issues: {len(open_issues)}")
         except Exception as e:
             print(f"[run] Warning: {e}")
-    # pass token so comments (human replies) are fetched
     issues_text = format_issues_for_prompt(open_issues, token=github_token)
 
     reading_chunk = ""
@@ -160,7 +151,7 @@ def main() -> None:
     print("[run] Calling Gemini...")
     try:
         decision = call_gemini_with_retry(
-            core, recent, issues_text, reading_chunk, notes_index, recent_notes
+            core, recent, issues_text, reading_chunk, system_manifest, requested_files
         )
     except Exception as exc:
         print(f"[run] ERROR: {exc}")
@@ -170,7 +161,7 @@ def main() -> None:
         print("[run] Gemini unavailable, skipping heartbeat gracefully.")
         if github_token and reading_context:
             try:
-                post_progress_report(github_token, reading_context, new_cursor, None, 0)
+                post_progress_report(github_token, reading_context, new_cursor or {}, None, 0)
             except Exception:
                 pass
         sys.exit(0)
@@ -186,6 +177,11 @@ def main() -> None:
 
     handle_file_operations(decision, reading_chunk, core, REPO_ROOT)
 
+    # save what agent wants to read next heartbeat
+    read_next = decision.get("read_next", [])
+    if isinstance(read_next, list) and read_next:
+        save_read_requests(REPO_ROOT, read_next)
+
     if new_cursor:
         save_cursor(REPO_ROOT, new_cursor)
 
@@ -193,7 +189,7 @@ def main() -> None:
 
     if github_token:
         try:
-            post_progress_report(github_token, reading_context, new_cursor, decision, len(reading_chunk))
+            post_progress_report(github_token, reading_context, new_cursor or {}, decision, len(reading_chunk))
         except Exception as e:
             print(f"[run] Warning (progress report): {e}")
 

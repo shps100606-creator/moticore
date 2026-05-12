@@ -46,7 +46,6 @@ def build_system_prompt(core: dict) -> str:
 
 
 def _parse_json(text: str) -> dict:
-    """Parse JSON from Gemini, repairing common issues like unescaped newlines."""
     text = text.strip()
     if text.startswith("```"):
         text = re.sub(r"^```[^\n]*\n", "", text)
@@ -65,8 +64,8 @@ def run_decision(
     recent_actions: str,
     issues_text: str,
     reading_chunk: str,
-    notes_index: str,
-    recent_notes: str,
+    system_manifest: str,
+    requested_files: str,
 ) -> dict:
     """Step 1: lightweight decision JSON."""
     reading_section = ""
@@ -77,16 +76,20 @@ def run_decision(
 閱讀後請同時思考：
 1. 這段內容值得建立哪些筆記
 2. 這段內容對我自身動機核的影響
-3. 是否需要更新 notes/INDEX.md
+3. 是否需要更新 memory/SYSTEM.md
 """
 
-    prompt = f"""## 我的長期記憶
+    requested_section = ""
+    if requested_files:
+        requested_section = f"""### 我上次請求閱讀的檔案
+{requested_files}
+"""
 
-### 筆記目錄（notes/INDEX.md）
-{notes_index}
+    prompt = f"""## 我的系統目錄（memory/SYSTEM.md）
+{system_manifest}
 
-### 最近修改的筆記
-{recent_notes}
+## 我請求閱讀的檔案
+{requested_section or '(本次無請求)'}
 
 ---
 
@@ -102,13 +105,15 @@ def run_decision(
 {core.get('task_inbox', '(無)')}
 
 ---
-請回傳此 JSON。所有字串內容必須在同一行，勿在字串內容中使用換行符。
+請回傳 JSON。所有字串內容必須在同一行，勿在字串內容中使用換行符。
 file_operations 只填 path 和 description，不要寫 content。
-不得修改 agent/ 目錄。每次操作筆記後必須更新 notes/INDEX.md。
+不得修改 agent/ 目錄。
 
-RETURN ONLY VALID JSON. No markdown fences, no extra text.
+read_next 列表下次心跳你想主動閱讀的檔案路徑（最多 8 份，用對 repo 根目錄的相對路徑）。
 
-{{"action_type": "reading|introspection|task_process|issue_response|no_action", "summary": "一句話", "motive_alignment": "支持|矛盾|修正|無關", "self_reflection": "對我存在的意義", "core_adjustment_needed": "", "execution_reasoning": "", "risk_assessment": "無|低|中|高", "deviation_flag": "無|輕微|顯著|嚴重", "result": "完成|部分完成|擱置", "issue_responses": [], "file_operations": [], "human_question": ""}}
+RETURN ONLY VALID JSON. No markdown fences.
+
+{{"action_type": "reading|introspection|task_process|issue_response|no_action", "summary": "一句話", "motive_alignment": "支持|矛盾|修正|無關", "self_reflection": "對我存在的意義", "core_adjustment_needed": "", "risk_assessment": "無|低|中|高", "deviation_flag": "無|輕微|顯著|嚴重", "result": "完成|部分完成|擱置", "issue_responses": [], "file_operations": [], "read_next": [], "human_question": ""}}
 """
 
     client = _client()

@@ -1,4 +1,5 @@
-"""Load motivation core and long-term memory into context."""
+"""Load motivation core and memory into context."""
+import json
 from pathlib import Path
 
 CORE_FILES = {
@@ -13,33 +14,51 @@ CORE_FILES = {
 }
 
 
-def _read(path: Path) -> str:
-    return path.read_text(encoding="utf-8") if path.exists() else ""
+def _read(path: Path, max_chars: int = 0) -> str:
+    if not path.exists():
+        return ""
+    text = path.read_text(encoding="utf-8")
+    return text[:max_chars] if max_chars else text
 
 
 def load_core(repo_root: Path) -> dict:
     return {key: _read(repo_root / rel) for key, rel in CORE_FILES.items()}
 
 
-def load_notes_index(repo_root: Path) -> str:
-    """Load the agent's own knowledge map."""
-    return _read(repo_root / "notes" / "INDEX.md") or "（尚無筆記目錄）"
+def load_system_manifest(repo_root: Path) -> str:
+    """Load SYSTEM.md — the agent's self-maintained system directory."""
+    return _read(repo_root / "memory" / "SYSTEM.md", max_chars=2000) or "(尚無系統目錄，請建立 memory/SYSTEM.md)"
 
 
-def load_recent_notes(repo_root: Path, n: int = 3) -> str:
-    """Load the n most recently modified note files."""
-    notes_root = repo_root / "notes"
-    if not notes_root.exists():
-        return "（尚無筆記）"
+def load_requested_files(repo_root: Path) -> str:
+    """Load files the agent requested last heartbeat via memory/read-requests.json."""
+    req_path = repo_root / "memory" / "read-requests.json"
+    if not req_path.exists():
+        return ""
 
-    md_files = [f for f in notes_root.rglob("*.md") if f.name != "INDEX.md"]
-    if not md_files:
-        return "（尚無筆記）"
+    try:
+        requests = json.loads(req_path.read_text(encoding="utf-8"))
+    except Exception:
+        return ""
 
-    recent = sorted(md_files, key=lambda f: f.stat().st_mtime, reverse=True)[:n]
+    if not isinstance(requests, list):
+        return ""
+
     parts = []
-    for f in recent:
-        rel = f.relative_to(repo_root)
-        content = _read(f)[:1000]  # cap each file at 1000 chars
-        parts.append(f"### {rel}\n{content}")
-    return "\n\n".join(parts)
+    for entry in requests[:8]:  # max 8 files per heartbeat
+        path_str = entry if isinstance(entry, str) else entry.get("path", "")
+        if not path_str:
+            continue
+        file_path = repo_root / path_str
+        content = _read(file_path, max_chars=1500)
+        if content:
+            parts.append(f"### {path_str}\n{content}")
+        else:
+            parts.append(f"### {path_str}\n(檔案不存在或為空)")
+
+    return "\n\n".join(parts) if parts else ""
+
+
+# kept for backward compat, still usable by agent as fallback
+def load_notes_index(repo_root: Path) -> str:
+    return _read(repo_root / "notes" / "INDEX.md") or "(尚無筆記目錄)"
