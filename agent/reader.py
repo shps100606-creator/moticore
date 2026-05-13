@@ -13,7 +13,7 @@ from pathlib import Path
 PRIMA_OWNER = "shps100606-creator"
 PRIMA_REPO = "prima-materia"
 DIALOGUES_PATH = "dialogues"
-CHUNK_CHARS = 20000
+CHUNK_CHARS = 10000  # reduced from 20000 to keep total prompt size manageable
 
 
 def _headers(token: str) -> dict:
