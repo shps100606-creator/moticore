@@ -18,6 +18,7 @@ from reader import get_next_chunk, save_cursor
 
 PROTECTED = {"agent"}
 PROGRESS_ISSUE = 7
+QUESTION_LABEL = "[代理提問]"
 
 
 def post_progress_report(github_token, reading_context, cursor, decision, chunk_len):
@@ -45,7 +46,6 @@ def handle_issue_responses(decision, github_token):
 
 
 def save_read_requests(repo_root: Path, read_next: list):
-    """Persist the agent's file requests for next heartbeat."""
     req_path = repo_root / "memory" / "read-requests.json"
     req_path.parent.mkdir(parents=True, exist_ok=True)
     req_path.write_text(json.dumps(read_next, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -80,6 +80,15 @@ def handle_file_operations(decision, reading_chunk, core, repo_root):
         print(f"[run] Written: {raw_path}")
 
 
+def has_open_question_issue(open_issues: list) -> bool:
+    """Return True if there's already an unanswered [代理提問] Issue open."""
+    return any(
+        QUESTION_LABEL in i.get("title", "")
+        for i in open_issues
+        if i.get("number") != PROGRESS_ISSUE
+    )
+
+
 def open_human_question_issue(github_token, question, context):
     from issues import OWNER, REPO
     import requests
@@ -89,7 +98,7 @@ def open_human_question_issue(github_token, question, context):
     body = f"{question}\n\n---\n_閱讀脈絡：{context}_"
     requests.post(f"https://api.github.com/repos/{OWNER}/{REPO}/issues",
                   headers=headers,
-                  json={"title": f"[代理提問] {question[:60]}", "body": body}).raise_for_status()
+                  json={"title": f"{QUESTION_LABEL} {question[:60]}", "body": body}).raise_for_status()
     print("[run] Human question Issue opened")
 
 
@@ -173,11 +182,13 @@ def main():
         handle_issue_responses(decision, github_token)
         human_q = decision.get("human_question", "").strip()
         if human_q:
-            open_human_question_issue(github_token, human_q, reading_context)
+            if has_open_question_issue(open_issues):
+                print("[run] Skipping new question Issue — unanswered [代理提問] already open")
+            else:
+                open_human_question_issue(github_token, human_q, reading_context)
 
     handle_file_operations(decision, reading_chunk, core, REPO_ROOT)
 
-    # save what agent wants to read next heartbeat
     read_next = decision.get("read_next", [])
     if isinstance(read_next, list) and read_next:
         save_read_requests(REPO_ROOT, read_next)
