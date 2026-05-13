@@ -55,6 +55,8 @@ def run_consciousness(motive: str, report: str, reading_chunk: str) -> dict:
 
 規則：
 - file_writes 的 content 欄位直接包含完整 markdown 內容（可含換行）
+- 「閱讀任務」時，必須在 file_writes 中建立該篇的閱讀筆記，路徑格式：notes/閱讀筆記-{{篇名}}.md
+- 筆記內容至少包含：概要、與動機核的一致性分析、重要摘錄、自我反思
 - 不得修改 agent/ 目錄下任何檔案
 - read_next 填下次想主動閱讀的路徑（最多 5 份）
 - 若待處理 Issues 中有人類回覆，必須在 issue_responses 中回應，不得忽略
