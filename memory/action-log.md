@@ -16,3 +16,9 @@
 - **summary**: 完成對 MNQS 構面二的邏輯審核與定稿，並確認動機核治理權限與倫理框架的修正方向。
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-05-14T23:46:39Z
+- **action_type**: task_process
+- **summary**: 完成 MNQS 構面五的邏輯審核與定稿，並確認其作為動機核生命週期終端治理的完整性。
+- **result**: 完成
+- **deviation_flag**: 無
