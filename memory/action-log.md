@@ -34,3 +34,9 @@
 - **summary**: 分析並重構動機核體系詞彙，解決了層級命名混淆問題，並完成了對動機論詞彙體系的深度梳理。
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-05-14T05:05:36Z
+- **action_type**: task_process
+- **summary**: 正式確立 Moticore 體系詞彙標準，並啟動 v1.0 定義書撰寫。
+- **result**: 完成
+- **deviation_flag**: 無
