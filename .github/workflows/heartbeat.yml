@@ -2,11 +2,16 @@ name: moticore-agent heartbeat
 
 on:
   schedule:
-    - cron: '0 */6 * * *'  # every 6 hours
-  workflow_dispatch: {}     # manual trigger from GitHub UI
+    - cron: '0 * * * *'
+    - cron: '30 * * * *'
+  workflow_dispatch: {}
 
 permissions:
   contents: write
+  issues: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   heartbeat:
@@ -28,12 +33,15 @@ jobs:
       - name: Run moticore-agent
         env:
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DIALOGUES_TOKEN: ${{ secrets.DIALOGUES_TOKEN }}
         run: python agent/run.py
 
       - name: Commit changes
         run: |
           git config user.name  "moticore-agent"
           git config user.email "moticore-agent@users.noreply.github.com"
-          git add memory/action-log.md reports/
+          mkdir -p notes reports
+          git add memory/ notes/ reports/
           git diff --cached --quiet || git commit -m "chore(agent): heartbeat log $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           git push origin claude/motivation-core-prototype-njnn4
