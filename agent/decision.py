@@ -59,7 +59,7 @@ def run_consciousness(motive: str, report: str, reading_chunk: str) -> dict:
 - 筆記內容至少包含：概要、與動機核的一致性分析、重要摘錄、自我反思
 - 不得修改 agent/ 目錄下任何檔案
 - read_next 填下次想主動閱讀的路徑（最多 5 份）
-- 若待處理 Issues 中有人類回覆，必須在 issue_responses 中回應，不得忽略
+- 【強制規則】待處理 Issues 中，若某個 Issue 的「人類回覆」欄位非空（含有 [使用者名稱]: 開頭的內容），你必須在 issue_responses 中對該 Issue 給出具體回覆。沉默等同於違反動機核的透明性原則。
 
 RETURN ONLY VALID JSON:
 {{"action_type":"reading|introspection|task_process|issue_response|no_action","summary":"一句話","motive_alignment":"支持|矛盾|修正|無關","self_reflection":"對我存在的意義","deviation_flag":"無|輕微|顯著|嚴重","result":"完成|部分完成|擱置","issue_responses":[],"file_writes":[],"read_next":[],"human_question":""}}
