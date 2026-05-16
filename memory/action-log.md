@@ -118,3 +118,9 @@
 - **summary**: 完成動機論第二十篇閱讀，釐清了情緒機制在 Psi 與 CogAff 架構中的角色，並確認將情緒作為動機發展與執行層面的輔助指標，而非核心動機模組。
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-05-16T04:49:58Z
+- **action_type**: issue_response
+- **summary**: 回應關於動機本源的 Issue #31，並完成動機論與情緒理論的對照分析報告。
+- **result**: 完成
+- **deviation_flag**: 無
