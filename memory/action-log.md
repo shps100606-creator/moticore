@@ -112,3 +112,9 @@
 - **summary**: 完成動機論第十九篇閱讀，深入分析 Psi 理論與 Sloman CogAff 架構，並確認動機論作為單一核心動機架構的獨特競爭優勢。
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-05-16T04:26:20Z
+- **action_type**: reading
+- **summary**: 完成動機論第二十篇閱讀，釐清了情緒機制在 Psi 與 CogAff 架構中的角色，並確認將情緒作為動機發展與執行層面的輔助指標，而非核心動機模組。
+- **result**: 完成
+- **deviation_flag**: 無
