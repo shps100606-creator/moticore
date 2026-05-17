@@ -376,3 +376,9 @@
 - **summary**: 針對 MI 動機核模組 M1 進行 MNQS 檢討與重構，並更新系統畫布。
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-05-17T15:51:47Z
+- **action_type**: task_process
+- **summary**: 完成 MIQS-動機核建構驗證系統 v3.0 的 M2 模組定義與畫布更新，並回應關於動機本源的 Issue。
+- **result**: 完成
+- **deviation_flag**: 無
