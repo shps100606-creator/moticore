@@ -86,6 +86,11 @@ def build_report(
     issues_text = format_issues_fn(open_issues, token=github_token)
     sections.append(f"[待處理 Issues]\n{issues_text}")
 
+    # 知識索引（筆記連貫性）
+    notes_index = _read(repo_root / "notes" / "INDEX.md", max_chars=3000)
+    if notes_index:
+        sections.append(f"[知識索引（寫新筆記時必須引用相關概念）]\n{notes_index}")
+
     # 上次請求閱讀的檔案
     requested = _load_requested_files(repo_root)
     if requested:
