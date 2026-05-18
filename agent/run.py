@@ -1,74 +1,35 @@
 #!/usr/bin/env python3
-"""moticore-agent entry point — 4-module architecture.
+"""moticore-agent entry point — newspaper architecture.
 
-1. loader      : load MOTIVE.md (motivation core)
-2. preprocessor: pure-code formatting of all context data
-3. decision    : single Gemini call (consciousness module)
-4. action      : pure-code execution of the decision
+1. preprocessor : assemble 4-layer MOTICORE DAILY newspaper
+2. decision     : single Gemini call → §SECTION-delimited remarks
+3. action       : parse remarks → execute (file writes, issue replies, log)
 """
-import json
 import os
 import sys
 import time
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).parent))
 
 from loader import load_motive
-from memory import append_action
-from decision import run_consciousness
-from issues import get_open_issues, post_comment, close_issue, format_issues_for_prompt, MOTI_BOT_LOGIN
+from memory import append_action, format_recent_for_report, get_recent_note_paths
+from decision import run_consciousness, parse_remarks
+from issues import get_open_issues, post_comment, close_issue, PROGRESS_ISSUE
 from reader import get_next_chunk, save_cursor
-from preprocessor import build_report
+from preprocessor import detect_mode, build_newspaper
 
-PROGRESS_ISSUE = 7
 QUESTION_LABEL = "[代理提問]"
 
 
-def _has_pending_responses(open_issues: list, github_token: str) -> bool:
-    """Return True if any non-progress issue needs a response from moti."""
-    from issues import get_issue_comments, PROGRESS_ISSUE as PI
-    for issue in open_issues:
-        num = issue.get("number")
-        if num == PI:
-            continue
-        if not github_token:
-            continue
-        comments = get_issue_comments(github_token, num, max_comments=10)
-        # Unreplied issue: moti has never commented
-        moti_comments = [c for c in comments if MOTI_BOT_LOGIN in c.get("user", {}).get("login", "")]
-        if not moti_comments:
-            return True
-        # Issue with new human reply
-        human_comments = [
-            c for c in comments
-            if c.get("user", {}).get("type") != "Bot"
-            and "github-actions" not in c.get("user", {}).get("login", "")
-        ]
-        if human_comments:
-            return True
-    return False
+# ── action handlers ─────────────────────────────────────────────────────────
 
-
-def post_progress_report(github_token, reading_context, cursor, decision):
-    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
-    file_idx = cursor.get("file_index", 0) + 1 if cursor else "?"
-    char_off = cursor.get("char_offset", 0) if cursor else "?"
-    finished = cursor.get("finished", False) if cursor else False
-    progress_line = "全部讀完！" if finished else f"第 {file_idx}/29 篇 《{reading_context}》，已讀至第 {char_off:,} 字"
-    reflection = decision.get("self_reflection", "").strip()[:120] if decision else "本次跳過（Gemini 暫時不可用）"
-    summary = decision.get("summary", "").strip()[:80] if decision else ""
-    post_comment(github_token, PROGRESS_ISSUE,
-                 f"**{now}**\n\n📖 {progress_line}\n💡 {summary}\n🧠 {reflection}")
-    print(f"[run] Progress posted to Issue #{PROGRESS_ISSUE}")
-
-
-def handle_issue_responses(decision, github_token):
-    for r in decision.get("issue_responses", []):
+def handle_issue_responses(parsed: dict, github_token: str) -> None:
+    for r in parsed.get("issue_responses", []):
         num = r.get("issue_number")
-        comment = r.get("comment", "")
+        comment = r.get("comment", "").strip()
         if not num or not comment or num == PROGRESS_ISSUE:
             continue
         post_comment(github_token, num, comment)
@@ -76,9 +37,10 @@ def handle_issue_responses(decision, github_token):
             close_issue(github_token, num)
 
 
-def handle_file_writes(decision, repo_root: Path):
-    for fw in decision.get("file_writes", []):
-        path_str = fw.get("path", "")
+def handle_file_writes(parsed: dict, repo_root: Path) -> list[dict]:
+    written = []
+    for fw in parsed.get("file_writes", []):
+        path_str = fw.get("path", "").strip()
         content = fw.get("content", "")
         if not path_str or not content:
             continue
@@ -89,43 +51,64 @@ def handle_file_writes(decision, repo_root: Path):
         file_path.parent.mkdir(parents=True, exist_ok=True)
         file_path.write_text(content, encoding="utf-8")
         print(f"[run] Written: {path_str}")
+        written.append(fw)
+    return written
 
 
-def save_read_requests(repo_root: Path, read_next: list):
-    req_path = repo_root / "memory" / "read-requests.json"
-    req_path.parent.mkdir(parents=True, exist_ok=True)
-    req_path.write_text(json.dumps(read_next, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"[run] Read requests saved: {read_next}")
-
-
-def has_open_question_issue(open_issues: list) -> bool:
-    return any(
+def handle_question(parsed: dict, open_issues: list, github_token: str,
+                    reading_context: str) -> None:
+    question = parsed.get("question", "").strip()
+    if not question:
+        return
+    already_open = any(
         QUESTION_LABEL in i.get("title", "")
         for i in open_issues
         if i.get("number") != PROGRESS_ISSUE
     )
-
-
-def open_human_question_issue(github_token, question, context):
+    if already_open:
+        print("[run] Skipping question — unanswered [代理提問] already open")
+        return
     from issues import OWNER, REPO
     import requests
-    headers = {"Authorization": f"Bearer {github_token}",
-               "Accept": "application/vnd.github+json",
-               "X-GitHub-Api-Version": "2022-11-28"}
-    body = f"{question}\n\n---\n_閱讀脈絡：{context}_"
+    headers = {
+        "Authorization": f"Bearer {github_token}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+    body = f"{question}\n\n---\n_閱讀脈絡：{reading_context}_"
     requests.post(
         f"https://api.github.com/repos/{OWNER}/{REPO}/issues",
         headers=headers,
         json={"title": f"{QUESTION_LABEL} {question[:60]}", "body": body},
     ).raise_for_status()
-    print("[run] Human question Issue opened")
+    print("[run] Question issue opened")
 
 
-def call_with_retry(motive, report, reading_chunk, retries=4):
+def post_progress_report(github_token: str, mode: str, reading_context: str,
+                         cursor: dict, action: dict) -> None:
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    if cursor:
+        finished = cursor.get("finished", False)
+        idx = cursor.get("file_index", 0) + 1
+        off = cursor.get("char_offset", 0)
+        progress = "全部讀完！" if finished else f"第 {idx}/29 篇 《{reading_context}》，至第 {off:,} 字"
+    else:
+        progress = "（回應模式，無閱讀進度）"
+    summary = action.get("summary", "").strip()[:100]
+    post_comment(
+        github_token, PROGRESS_ISSUE,
+        f"**{now}** [{mode}]\n\n📖 {progress}\n💡 {summary}"
+    )
+    print(f"[run] Progress posted (Issue #{PROGRESS_ISSUE})")
+
+
+# ── retry wrapper ────────────────────────────────────────────────────────────
+
+def call_with_retry(motive: str, newspaper: str, retries: int = 4) -> str:
     waits = [10, 20, 40, 60]
     for attempt in range(retries):
         try:
-            return run_consciousness(motive, report, reading_chunk)
+            return run_consciousness(motive, newspaper)
         except Exception as exc:
             msg = str(exc)
             if any(k in msg for k in ["503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED"]):
@@ -134,38 +117,39 @@ def call_with_retry(motive, report, reading_chunk, retries=4):
                 time.sleep(wait)
             else:
                 raise
-    return None
+    return ""
 
+
+# ── main ─────────────────────────────────────────────────────────────────────
 
 def main():
-    print(f"[run] moticore-agent started at {datetime.utcnow().isoformat()}Z")
+    print(f"[run] moticore-agent started at {datetime.now(timezone.utc).isoformat()}Z")
 
     github_token = os.environ.get("GITHUB_TOKEN", "")
     dialogues_token = os.environ.get("DIALOGUES_TOKEN", "")
 
-    # --- Module 1: Load motivation core ---
+    # Load motivation core (system instruction)
     motive = load_motive(REPO_ROOT)
-    print("[run] Motive core loaded")
+    print("[run] Motive loaded")
 
-    # --- Fetch open issues ---
+    # Fetch open issues
     open_issues = []
     if github_token:
         try:
             open_issues = get_open_issues(github_token)
-            print(f"[run] Open Issues: {len(open_issues)}")
+            print(f"[run] Open issues: {len(open_issues)}")
         except Exception as e:
-            print(f"[run] Warning: {e}")
+            print(f"[run] Warning (issues): {e}")
 
-    # --- Determine if issues need responses this heartbeat ---
-    pending_responses = _has_pending_responses(open_issues, github_token) if github_token else False
-    if pending_responses:
-        print("[run] Pending issue responses detected — skipping reading this heartbeat")
+    # Detect mode
+    mode, pending_issues = detect_mode(open_issues, github_token) if github_token else ("READING", [])
+    print(f"[run] Mode: {mode} | Pending: {len(pending_issues)}")
 
-    # --- Get reading chunk (skip if issues need responses) ---
+    # Fetch reading chunk (only in READING mode)
     reading_chunk = ""
     reading_context = ""
     new_cursor = None
-    if dialogues_token and not pending_responses:
+    if mode == "READING" and dialogues_token:
         try:
             result = get_next_chunk(dialogues_token, REPO_ROOT)
             reading_chunk = result["chunk_text"]
@@ -173,61 +157,61 @@ def main():
             new_cursor = result["cursor"]
             print(f"[run] Reading: {reading_context}")
         except Exception as e:
-            print(f"[run] Warning: {e}")
+            print(f"[run] Warning (reader): {e}")
 
-    # --- Module 2: Pre-process all context data ---
-    report = build_report(
+    # Build action-log summary for Layer 2
+    recent_log = format_recent_for_report(REPO_ROOT, n=3)
+
+    # Select relevant notes for Layer 4
+    recent_note_paths = get_recent_note_paths(REPO_ROOT, n=3)
+
+    # Assemble newspaper
+    newspaper = build_newspaper(
         repo_root=REPO_ROOT,
         open_issues=open_issues,
         github_token=github_token,
         cursor=new_cursor,
-        format_issues_fn=format_issues_for_prompt,
+        reading_chunk=reading_chunk,
+        reading_context=reading_context,
+        recent_log=recent_log,
+        recent_note_paths=recent_note_paths,
+        mode=mode,
+        pending_issues=pending_issues,
     )
-    print(f"[run] Pre-processed report: {len(report)} chars")
+    print(f"[run] Newspaper assembled: {len(newspaper)} chars")
 
-    # --- Module 3: Single AI call (consciousness module) ---
+    # Single Gemini call
     print("[run] Calling Gemini...")
-    try:
-        decision = call_with_retry(motive, report, reading_chunk)
-    except Exception as exc:
-        print(f"[run] ERROR: {exc}")
-        sys.exit(1)
-
-    if decision is None:
-        print("[run] Gemini unavailable, skipping heartbeat gracefully.")
-        if github_token and reading_context:
-            try:
-                post_progress_report(github_token, reading_context, new_cursor or {}, None)
-            except Exception:
-                pass
+    raw_output = call_with_retry(motive, newspaper)
+    if not raw_output:
+        print("[run] Gemini unavailable, skipping.")
         sys.exit(0)
 
-    print(f"[run] Decision: {decision.get('action_type')} -- {decision.get('summary')}")
+    # Parse §SECTION remarks
+    parsed = parse_remarks(raw_output)
+    action = parsed.get("action", {})
+    print(f"[run] Action: {action.get('type')} — {action.get('summary')}")
 
-    # --- Module 4: Execute actions ---
+    if parsed.get("truncated"):
+        print(f"[run] ⚠️ Truncated sections: {parsed['truncated']}")
+
+    # Execute actions
     if github_token:
-        handle_issue_responses(decision, github_token)
-        human_q = decision.get("human_question", "").strip()
-        if human_q:
-            if has_open_question_issue(open_issues):
-                print("[run] Skipping new question — unanswered [代理提問] already open")
-            else:
-                open_human_question_issue(github_token, human_q, reading_context)
+        handle_issue_responses(parsed, github_token)
+        handle_question(parsed, open_issues, github_token, reading_context)
 
-    handle_file_writes(decision, REPO_ROOT)
-
-    read_next = decision.get("read_next", [])
-    if isinstance(read_next, list) and read_next:
-        save_read_requests(REPO_ROOT, read_next)
+    written = handle_file_writes(parsed, REPO_ROOT)
 
     if new_cursor:
         save_cursor(REPO_ROOT, new_cursor)
 
-    append_action(REPO_ROOT, decision)
+    # Append to action-log (with file paths)
+    append_action(REPO_ROOT, action, mode=mode, file_writes=written)
 
+    # Progress report to Issue #7
     if github_token:
         try:
-            post_progress_report(github_token, reading_context, new_cursor or {}, decision)
+            post_progress_report(github_token, mode, reading_context, new_cursor or {}, action)
         except Exception as e:
             print(f"[run] Warning (progress): {e}")
 
