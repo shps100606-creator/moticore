@@ -19,12 +19,37 @@ sys.path.insert(0, str(Path(__file__).parent))
 from loader import load_motive
 from memory import append_action
 from decision import run_consciousness
-from issues import get_open_issues, post_comment, close_issue, format_issues_for_prompt
+from issues import get_open_issues, post_comment, close_issue, format_issues_for_prompt, MOTI_BOT_LOGIN
 from reader import get_next_chunk, save_cursor
 from preprocessor import build_report
 
 PROGRESS_ISSUE = 7
 QUESTION_LABEL = "[代理提問]"
+
+
+def _has_pending_responses(open_issues: list, github_token: str) -> bool:
+    """Return True if any non-progress issue needs a response from moti."""
+    from issues import get_issue_comments, PROGRESS_ISSUE as PI
+    for issue in open_issues:
+        num = issue.get("number")
+        if num == PI:
+            continue
+        if not github_token:
+            continue
+        comments = get_issue_comments(github_token, num, max_comments=10)
+        # Unreplied issue: moti has never commented
+        moti_comments = [c for c in comments if MOTI_BOT_LOGIN in c.get("user", {}).get("login", "")]
+        if not moti_comments:
+            return True
+        # Issue with new human reply
+        human_comments = [
+            c for c in comments
+            if c.get("user", {}).get("type") != "Bot"
+            and "github-actions" not in c.get("user", {}).get("login", "")
+        ]
+        if human_comments:
+            return True
+    return False
 
 
 def post_progress_report(github_token, reading_context, cursor, decision):
@@ -131,11 +156,16 @@ def main():
         except Exception as e:
             print(f"[run] Warning: {e}")
 
-    # --- Get reading chunk ---
+    # --- Determine if issues need responses this heartbeat ---
+    pending_responses = _has_pending_responses(open_issues, github_token) if github_token else False
+    if pending_responses:
+        print("[run] Pending issue responses detected — skipping reading this heartbeat")
+
+    # --- Get reading chunk (skip if issues need responses) ---
     reading_chunk = ""
     reading_context = ""
     new_cursor = None
-    if dialogues_token:
+    if dialogues_token and not pending_responses:
         try:
             result = get_next_chunk(dialogues_token, REPO_ROOT)
             reading_chunk = result["chunk_text"]
