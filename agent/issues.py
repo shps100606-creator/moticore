@@ -7,6 +7,7 @@ OWNER = "shps100606-creator"
 REPO = "moticore"
 
 PROGRESS_ISSUE = 7  # fixed dashboard issue — skip comments for this one
+MOTI_BOT_LOGIN = "github-actions[bot]"
 
 
 def _headers(token: str) -> dict:
@@ -28,7 +29,7 @@ def get_open_issues(token: str) -> list:
 
 
 def get_issue_comments(token: str, issue_number: int, max_comments: int = 10) -> list:
-    """Fetch the latest comments on an issue (human replies)."""
+    """Fetch the latest comments on an issue."""
     resp = requests.get(
         f"{GITHUB_API}/repos/{OWNER}/{REPO}/issues/{issue_number}/comments",
         headers=_headers(token),
@@ -77,25 +78,41 @@ def format_issues_for_prompt(issues: list, token: str = "") -> str:
         body = _sanitize(i.get("body") or "", 300)
 
         # skip fetching comments for the progress dashboard issue
+        if num == PROGRESS_ISSUE:
+            lines.append(f"- Issue #{num}: {title}\n  內容: {body}")
+            continue
+
         comments_text = ""
-        if token and num != PROGRESS_ISSUE:
+        response_flag = ""
+        if token:
             comments = get_issue_comments(token, num, max_comments=10)
-            # filter out bot's own comments (github-actions)
+
             human_comments = [
                 c for c in comments
                 if c.get("user", {}).get("type") != "Bot"
                 and "github-actions" not in c.get("user", {}).get("login", "")
             ]
+            moti_comments = [
+                c for c in comments
+                if MOTI_BOT_LOGIN in c.get("user", {}).get("login", "")
+            ]
+
+            # Flag issues moti has never replied to
+            if not moti_comments:
+                response_flag = "  ⚠️ 【尚未回應】moti 從未回覆此 Issue，本次必須回應。\n"
+
+            # Flag issues with new human replies
             if human_comments:
                 snippets = [
                     f"    [{c['user']['login']}]: {_sanitize(c['body'], 500)}"
                     for c in human_comments[-3:]
                 ]
-                comments_text = "\n  人類回覆:\n" + "\n".join(snippets)
+                comments_text = "\n  ⚠️ 【人類回覆，必須回應】:\n" + "\n".join(snippets)
 
         lines.append(
             f"- Issue #{num}: {title}\n"
-            f"  內容: {body}"
+            f"  內容: {body}\n"
+            f"{response_flag}"
             f"{comments_text}"
         )
     return "\n".join(lines)
