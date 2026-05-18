@@ -5,6 +5,7 @@ Layer 2: Today's status (code-generated summary, ~200 tokens)
 Layer 3: Main task (reading chunk OR issues to respond)
 Layer 4: Knowledge background (selected notes, truncation-safe)
 """
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 from issues import PROGRESS_ISSUE, MOTI_BOT_LOGIN, get_issue_comments
@@ -22,6 +23,20 @@ def _read(path: Path, max_chars: int = 0) -> str:
 def _section(title: str, body: str) -> str:
     bar = "━" * 44
     return f"\n{bar}\n{title}\n{bar}\n{body}\n"
+
+
+def _load_requested_files(repo_root: Path) -> list[str]:
+    """Load file paths moti requested last heartbeat via memory/read-requests.json."""
+    req_path = repo_root / "memory" / "read-requests.json"
+    if not req_path.exists():
+        return []
+    try:
+        data = json.loads(req_path.read_text(encoding="utf-8"))
+        if isinstance(data, list):
+            return [p for p in data if isinstance(p, str)]
+    except Exception:
+        pass
+    return []
 
 
 # ── mode detection ──────────────────────────────────────────────────────────
@@ -78,19 +93,22 @@ def _layer2_status(repo_root: Path, mode: str, cursor: dict,
 
     # Urgent items
     if pending_issues:
-        urgent_lines = []
-        for i in pending_issues:
-            urgent_lines.append(f"  ⚠️  Issue #{i['number']}「{i.get('title','')[:40]}」")
+        urgent_lines = [f"  ⚠️  Issue #{i['number']}「{i.get('title','')[:40]}」"
+                        for i in pending_issues]
         urgent = "\n".join(urgent_lines)
     else:
         urgent = "  ✅ 無"
+
+    # Current task from STATUS.md (first 600 chars)
+    status = _read(repo_root / "core" / "STATUS.md", max_chars=600)
 
     body = (
         f"時間：{now}\n"
         f"模式：{mode}\n"
         f"閱讀進度：{progress}\n"
         f"\n緊急事項：\n{urgent}\n"
-        f"\n最近行動：\n{recent_log}"
+        f"\n最近行動：\n{recent_log}\n"
+        f"\n當前任務（STATUS.md）：\n{status}"
     )
     return _section("【二】今日狀態　（程式碼生成，~200 tokens）", body)
 
@@ -114,7 +132,6 @@ def _layer3_response(pending_issues: list, github_token: str) -> str:
         title = issue.get("title", "")
         body = sanitize(issue.get("body") or "")
 
-        # Fetch full comment history
         comments_text = ""
         if github_token:
             comments = get_issue_comments(github_token, num, max_comments=20)
@@ -144,20 +161,29 @@ def _layer3_response(pending_issues: list, github_token: str) -> str:
     return _section("【三】本次任務：回應　（不可截斷）", body)
 
 
-def _layer4_knowledge(repo_root: Path, mode: str,
-                      recent_note_paths: list[str]) -> str:
-    """Load relevant notes full text. Truncation-safe (last layer)."""
+def _layer4_knowledge(repo_root: Path, recent_note_paths: list[str]) -> str:
+    """Load relevant notes. Priority: read-requests.json > recent_note_paths.
+    Truncation-safe (last layer).
+    """
     notes = []
     seen = set()
-    for rel_path in recent_note_paths:
+
+    # Priority 1: files moti explicitly requested last heartbeat
+    requested = _load_requested_files(repo_root)
+    all_paths = requested + [p for p in recent_note_paths if p not in requested]
+
+    for rel_path in all_paths:
         if rel_path in seen:
             continue
         seen.add(rel_path)
-        content = _read(repo_root / rel_path, max_chars=1200)
+        content = _read(repo_root / rel_path, max_chars=1500)
         if content:
-            notes.append(f"── {rel_path} ──\n{content}")
+            tag = "（指定讀取）" if rel_path in requested else ""
+            notes.append(f"── {rel_path}{tag} ──\n{content}")
+        if len(notes) >= 5:  # cap to keep tokens manageable
+            break
 
-    # Always include index summary (first 1500 chars)
+    # Always include INDEX summary
     index = _read(repo_root / "notes" / "INDEX.md", max_chars=1500)
     if index:
         notes.append(f"── notes/INDEX.md（概念速查）──\n{index}")
@@ -185,12 +211,8 @@ def build_newspaper(
 
     l1 = _layer1_motive(repo_root)
     l2 = _layer2_status(repo_root, mode, cursor, pending_issues, recent_log)
-
-    if mode == "READING":
-        l3 = _layer3_reading(reading_chunk, reading_context)
-    else:
-        l3 = _layer3_response(pending_issues, github_token)
-
-    l4 = _layer4_knowledge(repo_root, mode, recent_note_paths)
+    l3 = _layer3_reading(reading_chunk, reading_context) if mode == "READING" \
+        else _layer3_response(pending_issues, github_token)
+    l4 = _layer4_knowledge(repo_root, recent_note_paths)
 
     return "\n".join([header, l1, l2, l3, l4])
