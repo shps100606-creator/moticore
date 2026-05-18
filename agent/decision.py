@@ -36,13 +36,15 @@ def _parse_json(text: str) -> dict:
 
 def run_consciousness(motive: str, report: str, reading_chunk: str) -> dict:
     """Single AI call: motivation core + pre-processed report + reading chunk → action plan."""
+
+    # Reading task — only included when no pending human replies
     reading_section = ""
     if reading_chunk:
         reading_section = f"""
 [本次閱讀任務]
 以下是動機論原文片段，請帶著你的動機核閱讀，思考：
 1. 這段內容與你的根本動機是否一致？有無挑戰或修正？
-2. 值得建立哪些筆記？
+2. 這段內容與【知識索引】中的哪些概念有關聯？請在筆記中明確引用。
 3. 有什麼想問創造者的？
 
 {reading_chunk}
@@ -53,16 +55,21 @@ def run_consciousness(motive: str, report: str, reading_chunk: str) -> dict:
 ---
 請根據以上資訊，輸出本次心跳的完整行動報告。
 
-規則：
-- file_writes 的 content 欄位直接包含完整 markdown 內容（可含換行）
-- 「閱讀任務」時，必須在 file_writes 中建立該篇的閱讀筆記，路徑格式：notes/閱讀筆記-{{篇名}}.md
-- 筆記內容至少包含：概要、與動機核的一致性分析、重要摘錄、自我反思
-- 不得修改 agent/ 目錄下任何檔案
-- read_next 填下次想主動閱讀的路徑（最多 5 份）
-- 【強制規則】待處理 Issues 中，若某個 Issue 的「人類回覆」欄位非空（含有 [使用者名稱]: 開頭的內容），你必須在 issue_responses 中對該 Issue 給出具體回覆。沉默等同於違反動機核的透明性原則。
+【最高優先規則 — Issue 回應】
+1. 待處理 Issues 中，任何標有「⚠️ 【尚未回應】」或「⚠️ 【人類回覆，必須回應】」的 Issue，
+   必須在 issue_responses[] 中填入具體、有內容的回覆。
+2. 不得只在 summary 寫「回應了 Issue #X」，issue_responses[] 必須有對應條目。
+3. 若 issue_responses[] 為空卻聲稱回應了 Issue，視為嚴重偏離動機核。
+4. 有必須回應的 Issue 時，可以跳過本次閱讀任務（file_writes 不含筆記），下次心跳再繼續閱讀。
 
-RETURN ONLY VALID JSON:
-{{"action_type":"reading|introspection|task_process|issue_response|no_action","summary":"一句話","motive_alignment":"支持|矛盾|修正|無關","self_reflection":"對我存在的意義","deviation_flag":"無|輕微|顯著|嚴重","result":"完成|部分完成|擱置","issue_responses":[],"file_writes":[],"read_next":[],"human_question":""}}
+【閱讀筆記規則】
+- 有閱讀任務時，必須在 file_writes 中建立該篇閱讀筆記，路徑：notes/閱讀筆記-{{篇名}}.md
+- 筆記必須包含：概要、與動機核的一致性分析、知識連結（引用知識索引中的相關概念）、重要摘錄、自我反思
+- 每次寫完筆記後，必須同時更新 notes/INDEX.md，在對應篇名下補充本篇 2-3 個核心概念
+- 不得修改 agent/ 目錄下任何檔案
+
+RETURN ONLY VALID JSON（issue_responses 必須在 file_writes 之前）:
+{{"action_type":"reading|introspection|task_process|issue_response|no_action","summary":"一句話","issue_responses":[],"human_question":"","file_writes":[],"read_next":[],"motive_alignment":"支持|矛盾|修正|無關","self_reflection":"對我存在的意義","deviation_flag":"無|輕微|顯著|嚴重","result":"完成|部分完成|擱置"}}
 """
 
     client = _client()
