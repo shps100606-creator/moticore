@@ -18,13 +18,13 @@ from loader import load_motive
 from memory import append_action, format_recent_for_report, get_recent_note_paths
 from decision import run_consciousness, parse_remarks
 from issues import get_open_issues, post_comment, close_issue, PROGRESS_ISSUE
-from reader import get_next_chunk, save_cursor
+from reader import get_next_chunk, save_cursor, load_cursor
 from preprocessor import detect_mode, build_newspaper
 
 QUESTION_LABEL = "[代理提問]"
 
 
-# ── action handlers ─────────────────────────────────────────────────────────
+# ── action handlers ──────────────────────────────────────────────────────────
 
 def handle_issue_responses(parsed: dict, github_token: str) -> None:
     for r in parsed.get("issue_responses", []):
@@ -87,11 +87,13 @@ def handle_question(parsed: dict, open_issues: list, github_token: str,
 def post_progress_report(github_token: str, mode: str, reading_context: str,
                          cursor: dict, action: dict) -> None:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    if cursor:
+    if cursor and mode == "READING":
         finished = cursor.get("finished", False)
         idx = cursor.get("file_index", 0) + 1
         off = cursor.get("char_offset", 0)
         progress = "全部讀完！" if finished else f"第 {idx}/29 篇 《{reading_context}》，至第 {off:,} 字"
+    elif mode == "SYNTHESIS":
+        progress = "閱讀完毕，知識綜合中"
     else:
         progress = "（回應模式，無閱讀進度）"
     summary = action.get("summary", "").strip()[:100]
@@ -120,7 +122,7 @@ def call_with_retry(motive: str, newspaper: str, retries: int = 4) -> str:
     return ""
 
 
-# ── main ─────────────────────────────────────────────────────────────────────
+# ── main ───────────────────────────────────────────────────────────────────
 
 def main():
     print(f"[run] moticore-agent started at {datetime.now(timezone.utc).isoformat()}Z")
@@ -132,6 +134,9 @@ def main():
     motive = load_motive(REPO_ROOT)
     print("[run] Motive loaded")
 
+    # Load current reading cursor (needed for mode detection)
+    current_cursor = load_cursor(REPO_ROOT)
+
     # Fetch open issues
     open_issues = []
     if github_token:
@@ -141,8 +146,11 @@ def main():
         except Exception as e:
             print(f"[run] Warning (issues): {e}")
 
-    # Detect mode
-    mode, pending_issues = detect_mode(open_issues, github_token) if github_token else ("READING", [])
+    # Detect mode (pass cursor so SYNTHESIS can be triggered when reading finished)
+    if github_token:
+        mode, pending_issues = detect_mode(open_issues, github_token, cursor=current_cursor)
+    else:
+        mode, pending_issues = ("READING", [])
     print(f"[run] Mode: {mode} | Pending: {len(pending_issues)}")
 
     # Fetch reading chunk (only in READING mode)
@@ -159,6 +167,9 @@ def main():
         except Exception as e:
             print(f"[run] Warning (reader): {e}")
 
+    # Use new_cursor if available, else current_cursor for newspaper status display
+    display_cursor = new_cursor or current_cursor
+
     # Build action-log summary for Layer 2
     recent_log = format_recent_for_report(REPO_ROOT, n=3)
 
@@ -170,7 +181,7 @@ def main():
         repo_root=REPO_ROOT,
         open_issues=open_issues,
         github_token=github_token,
-        cursor=new_cursor,
+        cursor=display_cursor,
         reading_chunk=reading_chunk,
         reading_context=reading_context,
         recent_log=recent_log,
@@ -211,7 +222,7 @@ def main():
     # Progress report to Issue #7
     if github_token:
         try:
-            post_progress_report(github_token, mode, reading_context, new_cursor or {}, action)
+            post_progress_report(github_token, mode, reading_context, display_cursor or {}, action)
         except Exception as e:
             print(f"[run] Warning (progress): {e}")
 
