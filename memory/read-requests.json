@@ -1,3 +1,7 @@
-[
-  "ai-readable/markdown/動機論第三十二.md"
-]
+{
+  "notes": [
+    "notes/01-動機論基礎.md",
+    "notes/02-動機核結構.md"
+  ],
+  "dialogues": []
+}
