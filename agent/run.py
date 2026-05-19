@@ -5,6 +5,7 @@
 2. decision     : single Gemini call → §SECTION-delimited remarks
 3. action       : parse remarks → execute (file writes, issue replies, log)
 """
+import json
 import os
 import sys
 import time
@@ -53,6 +54,19 @@ def handle_file_writes(parsed: dict, repo_root: Path) -> list[dict]:
         print(f"[run] Written: {path_str}")
         written.append(fw)
     return written
+
+
+def handle_read_request(parsed: dict, repo_root: Path) -> None:
+    """Persist moti's read-request for next heartbeat."""
+    req = parsed.get("read_request", {})
+    if not req:
+        return
+    req_path = repo_root / "memory" / "read-requests.json"
+    req_path.parent.mkdir(exist_ok=True)
+    req_path.write_text(json.dumps(req, ensure_ascii=False, indent=2), encoding="utf-8")
+    notes = req.get("notes", [])
+    dialogues = req.get("dialogues", [])
+    print(f"[run] Read-request saved: {len(notes)} notes, {len(dialogues)} dialogues")
 
 
 def handle_question(parsed: dict, open_issues: list, github_token: str,
@@ -130,14 +144,11 @@ def main():
     github_token = os.environ.get("GITHUB_TOKEN", "")
     dialogues_token = os.environ.get("DIALOGUES_TOKEN", "")
 
-    # Load motivation core (system instruction)
     motive = load_motive(REPO_ROOT)
     print("[run] Motive loaded")
 
-    # Load current reading cursor (needed for mode detection)
     current_cursor = load_cursor(REPO_ROOT)
 
-    # Fetch open issues
     open_issues = []
     if github_token:
         try:
@@ -146,14 +157,12 @@ def main():
         except Exception as e:
             print(f"[run] Warning (issues): {e}")
 
-    # Detect mode (pass cursor so SYNTHESIS can be triggered when reading finished)
     if github_token:
         mode, pending_issues = detect_mode(open_issues, github_token, cursor=current_cursor)
     else:
         mode, pending_issues = ("READING", [])
     print(f"[run] Mode: {mode} | Pending: {len(pending_issues)}")
 
-    # Fetch reading chunk (only in READING mode)
     reading_chunk = ""
     reading_context = ""
     new_cursor = None
@@ -167,16 +176,10 @@ def main():
         except Exception as e:
             print(f"[run] Warning (reader): {e}")
 
-    # Use new_cursor if available, else current_cursor for newspaper status display
     display_cursor = new_cursor or current_cursor
-
-    # Build action-log summary for Layer 2
     recent_log = format_recent_for_report(REPO_ROOT, n=3)
-
-    # Select relevant notes for Layer 4
     recent_note_paths = get_recent_note_paths(REPO_ROOT, n=3)
 
-    # Assemble newspaper
     newspaper = build_newspaper(
         repo_root=REPO_ROOT,
         open_issues=open_issues,
@@ -188,17 +191,16 @@ def main():
         recent_note_paths=recent_note_paths,
         mode=mode,
         pending_issues=pending_issues,
+        dialogues_token=dialogues_token,
     )
     print(f"[run] Newspaper assembled: {len(newspaper)} chars")
 
-    # Single Gemini call
     print("[run] Calling Gemini...")
     raw_output = call_with_retry(motive, newspaper)
     if not raw_output:
         print("[run] Gemini unavailable, skipping.")
         sys.exit(0)
 
-    # Parse §SECTION remarks
     parsed = parse_remarks(raw_output)
     action = parsed.get("action", {})
     print(f"[run] Action: {action.get('type')} — {action.get('summary')}")
@@ -206,20 +208,18 @@ def main():
     if parsed.get("truncated"):
         print(f"[run] ⚠️ Truncated sections: {parsed['truncated']}")
 
-    # Execute actions
     if github_token:
         handle_issue_responses(parsed, github_token)
         handle_question(parsed, open_issues, github_token, reading_context)
 
     written = handle_file_writes(parsed, REPO_ROOT)
+    handle_read_request(parsed, REPO_ROOT)
 
     if new_cursor:
         save_cursor(REPO_ROOT, new_cursor)
 
-    # Append to action-log (with file paths)
     append_action(REPO_ROOT, action, mode=mode, file_writes=written)
 
-    # Progress report to Issue #7
     if github_token:
         try:
             post_progress_report(github_token, mode, reading_context, display_cursor or {}, action)
