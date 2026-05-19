@@ -2,7 +2,7 @@
 
 Layer 1: Motivation core (always first, never truncated)
 Layer 2: Today's status (code-generated summary, ~200 tokens)
-Layer 3: Main task (reading chunk OR issues to respond)
+Layer 3: Main task (reading chunk OR issues to respond OR synthesis task)
 Layer 4: Knowledge background (selected notes, truncation-safe)
 """
 import json
@@ -41,12 +41,18 @@ def _load_requested_files(repo_root: Path) -> list[str]:
 
 # ── mode detection ──────────────────────────────────────────────────────────
 
-def detect_mode(open_issues: list, github_token: str) -> tuple[str, list]:
-    """Return ('READING'|'RESPONSE', pending_issues).
+def detect_mode(open_issues: list, github_token: str, cursor: dict | None = None) -> tuple[str, list]:
+    """Return ('READING'|'RESPONSE'|'SYNTHESIS', pending_issues).
 
-    RESPONSE mode when any non-progress issue:
-      - has never received a moti reply, OR
-      - has a new human comment since last moti reply.
+    RESPONSE mode when any non-progress issue has:
+      - never received a moti reply, OR
+      - a human comment NEWER than moti's last reply.
+
+    SYNTHESIS mode when:
+      - reading is finished (cursor.finished == True), AND
+      - no pending response issues.
+
+    READING mode otherwise.
     """
     pending = []
     for issue in open_issues:
@@ -56,16 +62,36 @@ def detect_mode(open_issues: list, github_token: str) -> tuple[str, list]:
         if not github_token:
             continue
         comments = get_issue_comments(github_token, num, max_comments=20)
-        moti = [c for c in comments if MOTI_BOT_LOGIN in c.get("user", {}).get("login", "")]
+        moti = [
+            c for c in comments
+            if MOTI_BOT_LOGIN in c.get("user", {}).get("login", "")
+        ]
         human = [
             c for c in comments
             if c.get("user", {}).get("type") != "Bot"
             and "github-actions" not in c.get("user", {}).get("login", "")
         ]
-        if not moti or human:
+
+        if not moti:
+            # Never replied — always pending
             pending.append(issue)
-    mode = "RESPONSE" if pending else "READING"
-    return mode, pending
+            continue
+
+        # Only pending if there are human comments NEWER than moti's last reply
+        last_moti_time = max(c["created_at"] for c in moti)
+        new_human = [c for c in human if c.get("created_at", "") > last_moti_time]
+        if new_human:
+            pending.append(issue)
+
+    if pending:
+        return "RESPONSE", pending
+
+    # No pending responses — check if reading is finished
+    reading_finished = cursor.get("finished", False) if cursor else False
+    if reading_finished:
+        return "SYNTHESIS", []
+
+    return "READING", []
 
 
 # ── layer builders ──────────────────────────────────────────────────────────
@@ -161,6 +187,17 @@ def _layer3_response(pending_issues: list, github_token: str) -> str:
     return _section("【三】本次任務：回應　（不可截斷）", body)
 
 
+def _layer3_synthesis(repo_root: Path) -> str:
+    """Synthesis mode: load STATUS.md task list so moti can execute next step."""
+    status = _read(repo_root / "core" / "STATUS.md")
+    body = (
+        "閱讀已全部完成。現在進入知識綜合階段。\n"
+        "請閱讀 STATUS.md 中的任務清單，找出下一個未完成的步驟，並執行。\n\n"
+        f"{status}"
+    )
+    return _section("【三】本次任務：知識綜合　（不可截斷）", body)
+
+
 def _layer4_knowledge(repo_root: Path, recent_note_paths: list[str]) -> str:
     """Load relevant notes. Priority: read-requests.json > recent_note_paths.
     Truncation-safe (last layer).
@@ -211,8 +248,14 @@ def build_newspaper(
 
     l1 = _layer1_motive(repo_root)
     l2 = _layer2_status(repo_root, mode, cursor, pending_issues, recent_log)
-    l3 = _layer3_reading(reading_chunk, reading_context) if mode == "READING" \
-        else _layer3_response(pending_issues, github_token)
+
+    if mode == "READING":
+        l3 = _layer3_reading(reading_chunk, reading_context)
+    elif mode == "RESPONSE":
+        l3 = _layer3_response(pending_issues, github_token)
+    else:  # SYNTHESIS
+        l3 = _layer3_synthesis(repo_root)
+
     l4 = _layer4_knowledge(repo_root, recent_note_paths)
 
     return "\n".join([header, l1, l2, l3, l4])
