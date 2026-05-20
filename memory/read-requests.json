@@ -1,7 +1,8 @@
 {
   "notes": [
-    "notes/01-動機論基礎.md",
-    "notes/02-核心命題.md"
+    "notes/01-動機論定義.md",
+    "notes/02-動機核結構.md",
+    "notes/31-動機先驗性.md"
   ],
   "dialogues": []
 }
