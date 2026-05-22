@@ -1,0 +1,23 @@
+name: Filter prima-materia dialogues (one-time)
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  filter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/motivation-core-prototype-njnn4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - run: pip install requests
+
+      - name: Run filter
+        env:
+          DIALOGUES_TOKEN: ${{ secrets.DIALOGUES_TOKEN }}
+        run: python scripts/filter_prima_materia.py
