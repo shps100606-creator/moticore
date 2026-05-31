@@ -1,8 +1,9 @@
 {
   "notes": [
-    "notes/閱讀筆記-動機論基礎.md",
-    "notes/閱讀筆記-本體穩定性篇.md",
-    "notes/閱讀筆記-動機先驗性.md"
+    "notes/詞源與結構篇.md",
+    "notes/本體穩定性篇.md"
   ],
-  "dialogues": []
+  "dialogues": [
+    "31-動機先驗性.md"
+  ]
 }
