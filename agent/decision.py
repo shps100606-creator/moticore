@@ -65,6 +65,7 @@ result: 完成（或 部分完成 / 擱置）
    - dialogues: 請求載入 prima-materia 的原文檔案，每次最多 2 篇
    - 不需請求已經在【四】中顯示的檔案
    - 不得請求超出下一次 heartbeat 可處理的量
+8. SYNTHESIS 模式每次心跳最多寫 2 個 §FILE（主文件 + core/STATUS.md），避免截斷
 """
 
 
@@ -78,7 +79,7 @@ def run_consciousness(motive: str, newspaper: str) -> str:
         contents=prompt,
         config=types.GenerateContentConfig(
             system_instruction=motive,
-            max_output_tokens=8192,
+            max_output_tokens=16000,
             temperature=0.3,
         ),
     )
@@ -134,6 +135,6 @@ def parse_remarks(text: str) -> dict:
         if end_marker not in text[m.start():]:
             if kind not in result["truncated"]:
                 result["truncated"].append(kind)
-                print(f"[decision] ⚠️ 截斷倵測：§{kind} 缺少 §END_{kind}")
+                print(f"[decision] ⚠️ 截斷偵測：§{kind} 缺少 §END_{kind}")
 
     return result
