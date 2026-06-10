@@ -30,6 +30,21 @@ def _section(title: str, body: str) -> str:
     return f"\n{bar}\n{title}\n{bar}\n{body}\n"
 
 
+def _build_file_tree(repo_root: Path) -> str:
+    """Scan key directories and return a compact file listing for path verification."""
+    lines = []
+    for dir_name in ["docs", "notes", "memory", "core"]:
+        dir_path = repo_root / dir_name
+        if not dir_path.exists():
+            continue
+        files = sorted([f.name for f in dir_path.iterdir() if f.is_file()])
+        if files:
+            lines.append(f"{dir_name}/")
+            for f in files:
+                lines.append(f"  {dir_name}/{f}")
+    return "\n".join(lines)
+
+
 def _load_requested_files(repo_root: Path, dialogues_token: str = "") -> tuple[list[str], list[str]]:
     """Returns (note_paths, dialogue_filenames) from memory/read-requests.json.
 
@@ -150,6 +165,7 @@ def _layer2_status(repo_root: Path, mode: str, cursor: dict,
         urgent = "  ✅ 無"
 
     status = _read(repo_root / "core" / "STATUS.md", max_chars=600)
+    file_tree = _build_file_tree(repo_root)
 
     body = (
         f"時間：{now}\n"
@@ -157,7 +173,8 @@ def _layer2_status(repo_root: Path, mode: str, cursor: dict,
         f"閱讀進度：{progress}\n"
         f"\n緊急事項：\n{urgent}\n"
         f"\n最近行動：\n{recent_log}\n"
-        f"\n當前任務（STATUS.md）：\n{status}"
+        f"\n當前任務（STATUS.md）：\n{status}\n"
+        f"\n【文件樹】寫 read_request 路徑前必須對照此列表，禁止使用未出現的路徑：\n{file_tree}"
     )
     return _section("【二】今日狀態　（程式碼生成，~200 tokens）", body)
 
