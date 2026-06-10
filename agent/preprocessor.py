@@ -164,7 +164,7 @@ def _layer2_status(repo_root: Path, mode: str, cursor: dict,
     else:
         urgent = "  ✅ 無"
 
-    status = _read(repo_root / "core" / "STATUS.md", max_chars=600)
+    status = _read(repo_root / "docs" / "STATUS.md", max_chars=600)
     file_tree = _build_file_tree(repo_root)
 
     body = (
@@ -228,7 +228,7 @@ def _layer3_response(pending_issues: list, github_token: str) -> str:
 
 
 def _layer3_synthesis(repo_root: Path) -> str:
-    status = _read(repo_root / "core" / "STATUS.md")
+    status = _read(repo_root / "docs" / "STATUS.md")
     body = (
         "閱讀已全部完成。現在進入知識綜合階段。\n"
         "請閱讀 STATUS.md 中的任務清單，找出下一個未完成的步驟，並執行。\n"
