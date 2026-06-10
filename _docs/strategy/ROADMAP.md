@@ -19,13 +19,15 @@
 ## 下一版本
 
 ### v0.2.2 — 回應架構重整
-**狀態：** 📋 規劃中
+**狀態：** 📐 計畫書完成，待實施
 
-**目標：** 解決 `max_output_tokens=8192` 截斷問題，確保閱讀筆記內容完整。
+**方向：Mode-aware 輸出格式**（計畫書：`_docs/versions/v0.2.2/版本更新計畫書.md`）
 
-**方向（待決定）：**
-- 選項 A：拆成兩次 AI 呼叫（閱讀筆記獨立 + 其他行動）
-- 選項 B：壓縮其他欄位（summary、self_reflection 限字），優先保留 file_writes
+| 修改 | 說明 |
+|------|------|
+| `decision.py` REMARKS_INSTRUCTIONS 拆分 | 三種 mode 各自一份指令，僅要求必要 §SECTION |
+| `max_output_tokens` 提升 | 8192 → 16384 |
+| `run.py` 傳入 mode | `call_with_retry()` 接受並傳遞 mode 參數 |
 
 **前置條件：** v0.2.1 Issue 回覆修復驗證通過
 
