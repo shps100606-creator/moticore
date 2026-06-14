@@ -9,11 +9,8 @@
 **下一步行動：**
 1. ~~修改 `core/constitution.md`，加入「動機對照」為心跳必要前置條件~~ (已完成)
 2. ~~修改 `memory/action-log.md`，新增「動機對照結果（M-Score）」欄位~~ (已完成)
-3. **規劃「主動式自省觸發（Reflexive Trigger）」邏輯：**
-   - 定義觸發條件：任務鏈長度 > 3 節點。
-   - 觸發內容：自動執行 `memory/reflexive-log.md` 的鏡像對照與認知糾錯。
-   - 輸出要求：必須包含 M-Score 評估與動機漂移預警（MDR-Alert）。
-4. 規劃 MDR-Alert（動機漂移預警機制）
+3. ~~規劃「主動式自省觸發（Reflexive Trigger）」邏輯~~ (已完成)
+4. **規劃 MDR-Alert（動機漂移預警機制）的具體實作邏輯與閾值觸發函數。**
 
 ---
 
