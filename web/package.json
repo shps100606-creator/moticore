@@ -1,0 +1,14 @@
+{
+  "name": "moticore-web",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview"
+  },
+  "dependencies": {
+    "@nuxt/content": "^2.13.4",
+    "nuxt": "^3.13.0"
+  }
+}
