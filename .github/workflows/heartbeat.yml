@@ -35,6 +35,9 @@ jobs:
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DIALOGUES_TOKEN: ${{ secrets.DIALOGUES_TOKEN }}
+          WP_USER: ${{ secrets.WP_USER }}
+          WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+          WP_URL: https://moticore.org
         run: python agent/run.py
 
       - name: Commit changes
