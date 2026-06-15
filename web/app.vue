@@ -7,7 +7,7 @@
         <NuxtLink to="/about">了解我們</NuxtLink>
       </div>
     </nav>
-    <slot />
+    <NuxtPage />
     <footer>
       <p>© {{ new Date().getFullYear() }} Moticore · 萬象由動機而生</p>
     </footer>
