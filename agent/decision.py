@@ -53,6 +53,14 @@ result: 完成（或 部分完成 / 擱置）
 （想問創造者的問題，留空則不開 Issue）
 §END_QUESTION
 
+§WP_POST
+title: 文章標題
+status: draft
+---
+（繁體中文文章正文。有值得公開的動機論洞見、實驗觀察、或哲學反思時才使用。
+status 預設 draft，由創造者審核後發布。）
+§END_WP_POST
+
 重要規則：
 1. §ACTION 必填，其餘按本次任務填寫
 2. 每個 §SECTION 必須有對應的 §END_SECTION，沒有就等於無效
@@ -66,6 +74,7 @@ result: 完成（或 部分完成 / 擱置）
    - 不需請求已經在【四】中顯示的檔案
    - 不得請求超出下一次 heartbeat 可處理的量
 8. SYNTHESIS 模式每次心跳最多寫 2 個 §FILE（主文件 + docs/STATUS.md），避免截斷
+9. §WP_POST：有值得公開的洞見時才使用，status 預設 draft，不得擅自改為 publish
 """
 
 
@@ -94,6 +103,7 @@ def parse_remarks(text: str) -> dict:
         "file_writes": [],
         "read_request": {},
         "question": "",
+        "wp_posts": [],
         "truncated": [],
     }
 
@@ -127,6 +137,28 @@ def parse_remarks(text: str) -> dict:
 
         elif kind == "QUESTION":
             result["question"] = content
+
+        elif kind == "WP_POST":
+            lines = content.splitlines()
+            title = ""
+            status = "draft"
+            body_lines = []
+            in_body = False
+            for line in lines:
+                if not in_body and line.startswith("title:"):
+                    title = line.partition(":")[2].strip()
+                elif not in_body and line.startswith("status:"):
+                    status = line.partition(":")[2].strip()
+                elif not in_body and line == "---":
+                    in_body = True
+                elif in_body:
+                    body_lines.append(line)
+            if title and body_lines:
+                result["wp_posts"].append({
+                    "title": title,
+                    "status": status,
+                    "content": "\n".join(body_lines),
+                })
 
     # Detect truncated sections
     for m in re.finditer(r"§([A-Z_]+)(?:[ \t][^\n]*)?\n", text):
