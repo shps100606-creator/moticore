@@ -2,7 +2,7 @@
   <main>
     <section class="hero">
       <h1>
-        At the Core of All Motivation,<br>There Lies Intention.<br>
+        At the Core of All Motivation, There Lies Intention.<br>
         <span>萬象由動機而生，核心即是 Moticore</span>
       </h1>
       <p>
@@ -16,7 +16,7 @@
       </div>
     </section>
 
-    <section class="posts" v-if="posts.length">
+    <section class="posts" v-if="posts && posts.length">
       <h2>最新文章</h2>
       <div v-for="post in posts" :key="post._path" class="post-item">
         <h3><NuxtLink :to="post._path">{{ post.title }}</NuxtLink></h3>
