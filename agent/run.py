@@ -99,12 +99,13 @@ def handle_question(parsed: dict, open_issues: list, github_token: str,
 
 
 def handle_wp_post(parsed: dict) -> None:
-    """Post articles to WordPress via REST API."""
+    """Post articles to WordPress via REST API. Converts Markdown to HTML."""
     wp_user = os.environ.get("WP_USER", "")
     wp_password = os.environ.get("WP_APP_PASSWORD", "")
     wp_url = os.environ.get("WP_URL", "https://moticore.org")
     if not wp_user or not wp_password:
         return
+    import markdown as md
     import requests
     from requests.auth import HTTPBasicAuth
     auth = HTTPBasicAuth(wp_user, wp_password)
@@ -114,11 +115,12 @@ def handle_wp_post(parsed: dict) -> None:
         status = post.get("status", "draft")
         if not title or not content:
             continue
+        html_content = md.markdown(content, extensions=["extra", "nl2br"])
         try:
             resp = requests.post(
                 f"{wp_url}/wp-json/wp/v2/posts",
                 auth=auth,
-                json={"title": title, "content": content, "status": status},
+                json={"title": title, "content": html_content, "status": status},
                 timeout=15,
             )
             if resp.ok:
