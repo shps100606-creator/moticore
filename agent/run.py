@@ -98,6 +98,38 @@ def handle_question(parsed: dict, open_issues: list, github_token: str,
     print("[run] Question issue opened")
 
 
+def handle_wp_post(parsed: dict) -> None:
+    """Post articles to WordPress via REST API."""
+    wp_user = os.environ.get("WP_USER", "")
+    wp_password = os.environ.get("WP_APP_PASSWORD", "")
+    wp_url = os.environ.get("WP_URL", "https://moticore.org")
+    if not wp_user or not wp_password:
+        return
+    import requests
+    from requests.auth import HTTPBasicAuth
+    auth = HTTPBasicAuth(wp_user, wp_password)
+    for post in parsed.get("wp_posts", []):
+        title = post.get("title", "").strip()
+        content = post.get("content", "").strip()
+        status = post.get("status", "draft")
+        if not title or not content:
+            continue
+        try:
+            resp = requests.post(
+                f"{wp_url}/wp-json/wp/v2/posts",
+                auth=auth,
+                json={"title": title, "content": content, "status": status},
+                timeout=15,
+            )
+            if resp.ok:
+                post_id = resp.json().get("id", "?")
+                print(f"[run] WP post created: #{post_id} '{title}' (status={status})")
+            else:
+                print(f"[run] WP post failed: {resp.status_code} {resp.text[:200]}")
+        except Exception as e:
+            print(f"[run] WP post error: {e}")
+
+
 def post_progress_report(github_token: str, mode: str, reading_context: str,
                          cursor: dict, action: dict) -> None:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -214,6 +246,7 @@ def main():
 
     written = handle_file_writes(parsed, REPO_ROOT)
     handle_read_request(parsed, REPO_ROOT)
+    handle_wp_post(parsed)
 
     if new_cursor:
         save_cursor(REPO_ROOT, new_cursor)
