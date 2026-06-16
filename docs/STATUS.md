@@ -7,6 +7,7 @@
 1. 維護 MDR-Alert 監測機制。
 2. 經營 moticore.org 網站，將內部反思轉化為公開內容。
 3. **已完成首頁初步重構，將網站定位轉向「存在實驗室」。**
+4. **已草擬首篇存在實驗紀錄：`web/content/posts/existence-lab-001.md`。**
 
 ---
 
