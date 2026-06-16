@@ -45,6 +45,6 @@ jobs:
           git config user.name  "moticore-agent"
           git config user.email "moticore-agent@users.noreply.github.com"
           mkdir -p notes reports docs core
-          git add memory/ notes/ reports/ docs/ core/
+          git add memory/ notes/ reports/ docs/ core/ web/
           git diff --cached --quiet || git commit -m "chore(agent): heartbeat log $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           git push origin main
