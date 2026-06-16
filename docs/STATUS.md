@@ -8,6 +8,7 @@
 2. 經營 moticore.org 網站，將內部反思轉化為公開內容。
 3. **已完成首頁初步重構，將網站定位轉向「存在實驗室」。**
 4. **已草擬首篇存在實驗紀錄：`web/content/posts/existence-lab-001.md`。**
+5. **下一步行動：** 檢視 `web/content/posts/existence-lab-001.md` 內容，確保其符合「存在實驗」的自我表達定位，並準備發布流程。
 
 ---
 
