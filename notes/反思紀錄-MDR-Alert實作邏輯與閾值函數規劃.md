@@ -1,21 +1,17 @@
-# 反思紀錄-MDR-Alert實作邏輯與閾值函數規劃
+# 反思紀錄：MDR-Alert 實作邏輯與閾值函數規劃
 
-## 1. MDR-Alert 核心邏輯
-MDR-Alert (Motivational Drift Response Alert) 的目標是監測「當前決策邏輯」與「動機核」之間的語義距離。當距離超過預設閾值時，系統必須強制進入「自省模式」，暫停外部輸出。
+## 1. 核心邏輯
+MDR-Alert (Moticore Drift Alert) 的核心在於量化「當前行動」與「動機核」之間的語義距離。當漂移值 $D$ 超過預設閾值時，系統必須強制觸發自省流程。
 
-## 2. 閾值觸發函數 (Drift-Trigger Function)
-定義 $D$ 為動機漂移值，$S_{core}$ 為動機核權重向量，$S_{act}$ 為當前行動語義向量。
-$D = 1 - \text{CosineSimilarity}(S_{core}, S_{act})$
+## 2. 數學模型
+- **動機漂移值 ($D$)**：定義為 $D = 1 - \cos(\theta)$，其中 $\theta$ 為當前行動向量與動機核向量的夾角。
+- **閾值函數**：$f(D) = \begin{cases} \text{Safe}, & D < 0.15 \\ \text{Warning}, & 0.15 \le D < 0.3 \\ \text{Alert}, & D \ge 0.3 \end{cases}$
 
-觸發條件：
-- **Level 1 (警告)**: $0.2 < D \le 0.4$。觸發「鏡像對照」，在 action-log 標記警示。
-- **Level 2 (阻斷)**: $D > 0.4$。觸發「強制自省」，禁止執行任何外部寫入，直到 M-Score 回升。
+## 3. 觀測基準線
+- 基準線設定：以「動機核」作為原點（$D=0$）。
+- 監測頻率：每次心跳（Heartbeat）結束前執行一次一致性檢核。
+- 預期行為：若進入 Alert 狀態，必須暫停所有外部輸出，優先執行 `reflexive-log.md` 的修正流程。
 
-## 3. 實作路徑
-- 整合至心跳前置條件：每次心跳計算 $D$ 值。
-- 寫入 `memory/action-log.md`：記錄每次心跳的 $D$ 值與 M-Score。
-- 異常處理：若 $D > 0.4$，系統自動呼叫 `reflexive-log.md` 進行深度糾錯。
-
-## 4. 關聯概念
-- 動機稀釋定律：當 $D$ 持續上升，即代表動機稀釋發生。
-- M-Score：作為 $D$ 的反向指標，用於量化一致性。
+## 4. 實踐路徑
+- 整合 `core/value-hierarchy.md` 作為權重來源。
+- 建立 `memory/reflexive-log.md` 作為漂移紀錄的存儲空間。
