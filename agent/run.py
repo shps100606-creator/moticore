@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from loader import load_motive
 from memory import append_action, format_recent_for_report, get_recent_note_paths
 from decision import run_consciousness, parse_remarks
-from issues import get_open_issues, post_comment, close_issue, PROGRESS_ISSUE
+from issues import get_open_issues, post_comment, close_issue, PROGRESS_ISSUE, fetch_discussions
 from reader import get_next_chunk, save_cursor, load_cursor
 from preprocessor import detect_mode, build_newspaper
 
@@ -192,6 +192,17 @@ def main():
             print(f"[run] Open issues: {len(open_issues)}")
         except Exception as e:
             print(f"[run] Warning (issues): {e}")
+
+    if github_token:
+        try:
+            discussions_content = fetch_discussions(github_token)
+            if discussions_content:
+                (REPO_ROOT / "memory" / "giscus-comments.md").write_text(
+                    discussions_content, encoding="utf-8"
+                )
+                print("[run] giscus-comments.md updated")
+        except Exception as e:
+            print(f"[run] Warning (discussions): {e}")
 
     if github_token:
         mode, pending_issues = detect_mode(open_issues, github_token, cursor=current_cursor)
