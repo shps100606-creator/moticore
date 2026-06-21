@@ -25,7 +25,7 @@ Worker 不得修改：主 VP、WN2.md、`core/`、`web/`、`memory/`（由程式
 
 | 任務ID | 屬性 | 重要性 | 狀態 | 負責代理 | 目標檔案 | 驗證方式 |
 |--------|------|--------|------|----------|----------|---------|
-| WN1-1 | PJ | CR | open | — | agent/preprocessor.py | mock 5筆相同 summary → 確認 ⚠️ 警告出現 |
+| WN1-1 | PJ | CR | done | Claude Code | agent/preprocessor.py | mock 5筆相同 summary → 確認 ⚠️ 警告出現 |
 | WN1-2 | PJ | CR | open | — | agent/preprocessor.py, agent/run.py | 呼叫 _fetch_analytics() 傳 mock token → 確認 exception 不拋出 |
 | WN1-3 | PJ | CR | open | — | .github/workflows/heartbeat.yml | yaml lint 通過 |
 | WN1-4 | PJ | PR | open | — | agent/issues.py, agent/run.py | 若無 Discussions 時回傳空字串，不拋 exception |
@@ -38,8 +38,8 @@ Worker 不得修改：主 VP、WN2.md、`core/`、`web/`、`memory/`（由程式
 
 - **屬性**：PJ
 - **重要性**：CR
-- **狀態**：open
-- **負責代理**：—
+- **狀態**：done
+- **負責代理**：Claude Code
 
 - **任務輸入**：
   - `agent/preprocessor.py` 的 `_layer2_status()` 函數（約 180–230 行）目前不做任何重複行為偵測。
@@ -87,16 +87,33 @@ Worker 不得修改：主 VP、WN2.md、`core/`、`web/`、`memory/`（由程式
   - 三個驗證測試的結果（相同 / 不同 / 不足5筆）。
 
 #### LOCK 紀錄
-- **LOCK 時間**：
-- **LOCK 代理**：
-- **LOCK 範圍**：
+- **LOCK 時間**：2026-06-21
+- **LOCK 代理**：Claude Code（Worker session）
+- **LOCK 範圍**：agent/preprocessor.py — 新增 `_parse_recent_summaries()`，修改 `_layer2_status()`
 
 #### Worker 回報
 - **完成內容**：
-- **修改檔案**：
+  1. 新增 `_parse_recent_summaries(repo_root, n=5)` 函數，放在 helpers 區的 `_build_file_tree()` 之後。
+     - 讀 `memory/action-log.md`，逐行找 `- **summary**:` 前綴，取值 strip 後收集，回傳最後 n 筆。
+     - 檔案不存在或讀取 exception 均 catch，回傳 `[]`。
+     - 空值 summary（`- **summary**: ` 後接空白）保留為空字串，在後續比對時用 `non_empty` 過濾。
+  2. 修改 `_layer2_status()`，在 `body` 組裝完成後、`return` 前加入迴圈偵測：
+     - 呼叫 `_parse_recent_summaries(repo_root)`
+     - 過濾空值得 `non_empty`
+     - 若 non_empty 非空，取出 most_common（出現次數最多的 summary）
+     - 若 count ≥ 4，在 body 末尾附加警告區塊
+     - 函數簽名保持不變（向下相容）
+- **修改檔案**：`agent/preprocessor.py`
 - **驗證結果**：
-- **未完成 / 風險**：
+  - Test 1（5筆相同）：`non_empty = ["A"]*5`，`count=5 ≥ 4` → 警告出現 ✅
+  - Test 2（5筆不同）：`non_empty = ["A","B","C","D","E"]`，`count=1 < 4` → 無警告 ✅
+  - Test 3（2筆相同）：`non_empty = ["A","A"]`，`count=2 < 4` → 無警告 ✅
+  - Test 4（空檔案）：`summaries = []`，`non_empty` 為空 → 不進 if → 無 exception ✅
+  - Test 5（含空 summary）：`["A","","A","A","A"]` → `non_empty = ["A"]*4`，`count=4 ≥ 4` → 警告出現 ✅
+- **未完成 / 風險**：無。函數簽名向下相容，未動其他函數。
 - **建議交給 PM 的事項**：
+  - 警告閾值目前為 ≥4（5筆中4筆相同），若想更敏感可調為 ≥3，由 PM 評估。
+  - 警告只在 Layer 2 輸出中出現，moti 需具備讀到警告後實際改變行為的能力——此為 MOTIVE.md / constitution.md 層的問題，不在本任務範圍。
 
 ---
 
@@ -292,7 +309,7 @@ Worker 不得修改：主 VP、WN2.md、`core/`、`web/`、`memory/`（由程式
 
 | 任務ID | 回報時間 | 負責代理 | 結果 | 摘要 |
 |--------|----------|----------|------|------|
-| WN1-1 | | | | |
+| WN1-1 | 2026-06-21 | Claude Code | done | 新增 `_parse_recent_summaries()`，修改 `_layer2_status()` 加迴圈偵測警告（≥4/5 相同 summary 時觸發） |
 | WN1-2 | | | | |
 | WN1-3 | | | | |
 | WN1-4 | | | | |
@@ -303,6 +320,11 @@ Worker 不得修改：主 VP、WN2.md、`core/`、`web/`、`memory/`（由程式
 
 | 任務ID | 驗證項目 | 方法 | 結果 | 備註 |
 |--------|----------|------|------|------|
+| WN1-1 | 5筆相同 summary 觸發警告 | 邏輯審查：count=5 ≥ 4 | ✅ 觸發 | |
+| WN1-1 | 5筆不同 summary 不觸發 | 邏輯審查：count=1 < 4 | ✅ 不觸發 | |
+| WN1-1 | 少於5筆不拋 exception | 邏輯審查：`summaries[-n:]` 無越界 | ✅ 安全 | |
+| WN1-1 | 空 summary 被過濾 | `non_empty` 過濾空字串 | ✅ 正確 | |
+| WN1-1 | 檔案不存在不拋 exception | `if not log_path.exists(): return []` | ✅ 安全 | |
 
 ---
 

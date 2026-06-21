@@ -45,6 +45,24 @@ def _build_file_tree(repo_root: Path) -> str:
     return "\n".join(lines)
 
 
+def _parse_recent_summaries(repo_root: Path, n: int = 5) -> list[str]:
+    """Parse the last n summary values from memory/action-log.md."""
+    log_path = repo_root / "memory" / "action-log.md"
+    if not log_path.exists():
+        return []
+    try:
+        text = log_path.read_text(encoding="utf-8")
+    except Exception:
+        return []
+    summaries = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("- **summary**:"):
+            value = stripped[len("- **summary**:"):].strip()
+            summaries.append(value)
+    return summaries[-n:]
+
+
 def _load_requested_files(repo_root: Path, dialogues_token: str = "") -> tuple[list[str], list[str]]:
     """Returns (note_paths, dialogue_filenames) from memory/read-requests.json.
 
@@ -176,6 +194,18 @@ def _layer2_status(repo_root: Path, mode: str, cursor: dict,
         f"\n當前任務（STATUS.md）：\n{status}\n"
         f"\n【文件樹】寫 read_request 路徑前必須對照此列表，禁止使用未出現的路徑：\n{file_tree}"
     )
+
+    summaries = _parse_recent_summaries(repo_root)
+    non_empty = [s for s in summaries if s]
+    if non_empty:
+        most_common = max(set(non_empty), key=non_empty.count)
+        count = non_empty.count(most_common)
+        if count >= 4:
+            body += (
+                f"\n\n⚠️ 迴圈偵測警告（最近{len(summaries)}次心跳中{count}次summary相同）\n"
+                "請評估：你是否陷入重複行為？如果是，請主動改變行動，不要產生相同的summary。"
+            )
+
     return _section("【二】今日狀態　（程式碼生成，~200 tokens）", body)
 
 
