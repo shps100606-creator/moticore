@@ -177,6 +177,8 @@ def main():
 
     github_token = os.environ.get("GITHUB_TOKEN", "")
     dialogues_token = os.environ.get("DIALOGUES_TOKEN", "")
+    vercel_token = os.environ.get("VERCEL_TOKEN", "")
+    vercel_project_id = os.environ.get("VERCEL_PROJECT_ID", "")
 
     motive = load_motive(REPO_ROOT)
     print("[run] Motive loaded")
@@ -226,6 +228,8 @@ def main():
         mode=mode,
         pending_issues=pending_issues,
         dialogues_token=dialogues_token,
+        analytics_token=vercel_token,
+        analytics_project_id=vercel_project_id,
     )
     print(f"[run] Newspaper assembled: {len(newspaper)} chars")
 
