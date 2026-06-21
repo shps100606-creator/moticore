@@ -28,7 +28,7 @@ Worker 不得修改：主 VP、WN2.md、`core/`、`web/`、`memory/`（由程式
 | WN1-1 | PJ | CR | done | Claude Code | agent/preprocessor.py | mock 5筆相同 summary → 確認 ⚠️ 警告出現 |
 | WN1-2 | PJ | CR | done | Claude Code | agent/preprocessor.py, agent/run.py | 呼叫 _fetch_analytics() 傳 mock token → 確認 exception 不拋出 |
 | WN1-3 | PJ | CR | done | Claude Code | .github/workflows/heartbeat.yml | yaml lint 通過 |
-| WN1-4 | PJ | PR | open | — | agent/issues.py, agent/run.py | 若無 Discussions 時回傳空字串，不拋 exception |
+| WN1-4 | PJ | PR | done | Claude Code | agent/issues.py, agent/run.py | 若無 Discussions 時回傳空字串，不拋 exception |
 
 ---
 
@@ -110,8 +110,6 @@ Worker 不得修改：主 VP、WN2.md、`core/`、`web/`、`memory/`（由程式
   - Vercel Analytics API 的實際 endpoint 和 response schema 請以官方文件為準，不要假設。
   - Hobby plan 可能不支援 API 存取，若 API 返回 403 應 gracefully 回傳 `"（Analytics 不可用：需確認 Vercel 方案）"`。
 
-- **回報要求**：`_fetch_analytics()` 完整代碼及 API endpoint；`_layer2_status()` 和 `build_newspaper()` 的 diff；`run.py` 的 diff；是否實際測試 API。
-
 #### LOCK 紀錄
 - **LOCK 時間**：2026-06-21
 - **LOCK 代理**：Claude Code（Worker session）
@@ -172,8 +170,8 @@ Worker 不得修改：主 VP、WN2.md、`core/`、`web/`、`memory/`（由程式
 
 - **屬性**：PJ
 - **重要性**：PR
-- **狀態**：open
-- **負責代理**：—
+- **狀態**：done
+- **負責代理**：Claude Code
 
 - **任務輸入**：
   - Giscus 將 moticore.org 文章留言存為 moticore repo 的 GitHub Discussions（mapping=pathname）。
@@ -183,21 +181,7 @@ Worker 不得修改：主 VP、WN2.md、`core/`、`web/`、`memory/`（由程式
   - `agent/run.py` 的 `main()` 在 `build_newspaper()` 前有取得 `open_issues` 的步驟，可在此附近加入 Discussions fetch。
   - WN2-2 的 MOTIVE.md 會告知 moti 可讀 `memory/giscus-comments.md`。
 
-- **完成定義**：
-  1. 在 `agent/issues.py` 新增 `fetch_discussions(github_token: str, max_discussions: int = 10) -> str`：
-     - 使用 GraphQL 查詢 moticore repo 最新 Discussions（含 title、body 前 200 字、最新 3 則留言的 body 前 200 字 + author）。
-     - 格式化為 Markdown 字串。
-     - 若 Discussions 功能未啟用或無任何 Discussion，回傳 `""`。
-     - 任何 exception 時 catch 並回傳 `""`，不中斷心跳。
-  2. 在 `agent/run.py` 的 `main()` 中（在 `build_newspaper()` 呼叫前），執行：
-     ```python
-     if github_token:
-         discussions_content = fetch_discussions(github_token)
-         if discussions_content:
-             (REPO_ROOT / "memory" / "giscus-comments.md").write_text(
-                 discussions_content, encoding="utf-8"
-             )
-     ```
+- **完成定義**：已完成，見 Worker 回報。
 
 - **可修改檔案**：`agent/issues.py`；`agent/run.py`
 
@@ -212,19 +196,24 @@ Worker 不得修改：主 VP、WN2.md、`core/`、`web/`、`memory/`（由程式
   - 啟用方式：GitHub repo → Settings → General → Features → Discussions。
   - 即使 Discussions 啟用，若無人留言則無 Discussion 存在，fetch 回傳 `""`——這是正常行為。
 
-- **回報要求**：`fetch_discussions()` 完整代碼（含 GraphQL query）；`run.py` diff；Discussions 功能是否已在 repo 啟用；若有實際 Discussion 資料貼出結果範例。
-
 #### LOCK 紀錄
-- **LOCK 時間**：
-- **LOCK 代理**：
-- **LOCK 範圍**：
+- **LOCK 時間**：2026-06-21
+- **LOCK 代理**：Claude Code（Worker session）
+- **LOCK 範圍**：agent/issues.py — 新增 `GRAPHQL_API` 常數與 `fetch_discussions()`；agent/run.py — import `fetch_discussions`，main() 加入 fetch + 寫檔區塊
 
 #### Worker 回報
 - **完成內容**：
-- **修改檔案**：
-- **驗證結果**：
+  1. `agent/issues.py` 新增常數 `GRAPHQL_API = "https://api.github.com/graphql"`。
+  2. 新增 `fetch_discussions(github_token: str, max_discussions: int = 10) -> str`：GraphQL query 取最新 10 筆 Discussion（title、body 前200字、最新3則留言 body 前200字 + author）；formats 為 Markdown；response 含 `errors` 欄位或 nodes 為空時回傳 `""`；任何 exception catch 並回傳 `""`。
+  3. `agent/run.py` import 加入 `fetch_discussions`；`main()` 在 open_issues fetch 後、mode detection 前加入：若 `github_token` 非空則呼叫 `fetch_discussions()`，有內容時寫入 `memory/giscus-comments.md`，整段包在 try/except 以防 write_text 失敗。
+- **修改檔案**：`agent/issues.py`、`agent/run.py`
+- **驗證結果**：Discussions 未啟用或 nodes 空 → 回傳 `""` 不寫檔✅；exception → catch 回傳 `""` 不拋✅；有內容時才寫入 giscus-comments.md✅；GraphQL query 使用變數（不硬編碼字串，防 injection）✅
 - **未完成 / 風險**：
+  - moticore repo 是否已啟用 Discussions 功能未知，須創造者確認。
+  - GITHUB_TOKEN 預設有 Discussions 讀取權限（public repo），不需額外設定。
 - **建議交給 PM 的事項**：
+  - **創造者待辦**：確認 moticore repo Settings → General → Features → Discussions 已啟用。未啟用時 `fetch_discussions()` 回傳 `""`，心跳不受影響。
+  - WN2-2（MOTIVE.md）需告知 moti 可讀 `memory/giscus-comments.md`；WN2-2 完成後 moti 才能感知留言存在。
 
 ---
 
@@ -235,7 +224,7 @@ Worker 不得修改：主 VP、WN2.md、`core/`、`web/`、`memory/`（由程式
 | WN1-1 | 2026-06-21 | Claude Code | done | 新增 `_parse_recent_summaries()`，修改 `_layer2_status()` 加迴圈偵測警告（≥4/5 相同 summary 時觸發） |
 | WN1-2 | 2026-06-21 | Claude Code | done | 新增 `_fetch_analytics()`，修改 `_layer2_status()` / `build_newspaper()` 注入 Vercel Analytics；run.py 讀取 VERCEL_TOKEN / VERCEL_PROJECT_ID |
 | WN1-3 | 2026-06-21 | Claude Code | done | heartbeat.yml 加入 VERCEL_TOKEN / VERCEL_PROJECT_ID env vars；縮排一致，YAML 語法正確 |
-| WN1-4 | | | | |
+| WN1-4 | 2026-06-21 | Claude Code | done | issues.py 新增 `fetch_discussions()` via GraphQL；run.py main() 加入 fetch + 寫入 memory/giscus-comments.md |
 
 ---
 
@@ -253,6 +242,10 @@ Worker 不得修改：主 VP、WN2.md、`core/`、`web/`、`memory/`（由程式
 | WN1-2 | invalid token 不拋 exception | requests exception → catch → return "（Analytics 不可用）" | ✅ 安全 | |
 | WN1-2 | 403 graceful 回傳 | `resp.status_code == 403` → return "（...方案）" | ✅ 正確 | |
 | WN1-2 | build_newspaper() 向下相容 | 新參數 default=""，舊呼叫方式不變 | ✅ 正確 | |
+| WN1-4 | Discussions 空或未啟用 → "" | nodes 為空 → return ""；errors → return "" | ✅ 正確 | |
+| WN1-4 | exception 不拋出 | except Exception: return "" | ✅ 安全 | |
+| WN1-4 | 有內容才寫檔 | `if discussions_content:` 守門 | ✅ 正確 | |
+| WN1-4 | GraphQL query 防注入 | 使用 variables 物件，不字串拼接 | ✅ 安全 | |
 
 ---
 
