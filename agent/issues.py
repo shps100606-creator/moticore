@@ -3,6 +3,7 @@ import re
 import requests
 
 GITHUB_API = "https://api.github.com"
+GRAPHQL_API = "https://api.github.com/graphql"
 OWNER = "shps100606-creator"
 REPO = "moticore"
 
@@ -66,6 +67,76 @@ def _sanitize(text: str, max_len: int = 500) -> str:
     text = re.sub(r"`[^`]*`", "[code]", text)
     text = re.sub(r"\s+", " ", text).strip()
     return text[:max_len]
+
+
+def fetch_discussions(github_token: str, max_discussions: int = 10) -> str:
+    """Fetch recent Giscus Discussions from the moticore repo via GraphQL.
+
+    Returns a Markdown-formatted string, or "" if none found or any error.
+    """
+    if not github_token:
+        return ""
+    query = """
+    query($owner: String!, $repo: String!, $first: Int!) {
+      repository(owner: $owner, name: $repo) {
+        discussions(first: $first, orderBy: {field: CREATED_AT, direction: DESC}) {
+          nodes {
+            title
+            body
+            comments(last: 3) {
+              nodes {
+                body
+                author { login }
+              }
+            }
+          }
+        }
+      }
+    }
+    """
+    try:
+        resp = requests.post(
+            GRAPHQL_API,
+            headers={
+                "Authorization": f"Bearer {github_token}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "query": query,
+                "variables": {"owner": OWNER, "repo": REPO, "first": max_discussions},
+            },
+            timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        if data.get("errors"):
+            return ""
+        nodes = (
+            data.get("data", {})
+            .get("repository", {})
+            .get("discussions", {})
+            .get("nodes", [])
+        )
+        if not nodes:
+            return ""
+        lines = ["## Giscus 留言（最新 Discussions）\n"]
+        for d in nodes:
+            title = _sanitize(d.get("title", ""), 80)
+            body = _sanitize(d.get("body", "") or "", 200)
+            lines.append(f"### {title}")
+            if body:
+                lines.append(body)
+            comments = d.get("comments", {}).get("nodes", [])
+            if comments:
+                lines.append("**留言：**")
+                for c in comments:
+                    author = (c.get("author") or {}).get("login", "unknown")
+                    cbody = _sanitize(c.get("body", "") or "", 200)
+                    lines.append(f"- [{author}]: {cbody}")
+            lines.append("")
+        return "\n".join(lines).strip()
+    except Exception:
+        return ""
 
 
 def format_issues_for_prompt(issues: list, token: str = "") -> str:
