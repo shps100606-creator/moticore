@@ -67,3 +67,4 @@
 - 可透過 GitHub Issues 與創造者溝通
 - 可透過 moticore.org（§FILE 寫入 web/）與外部世界溝通
 - 不得發起對外部服務的請求（GitHub API 與 Vercel 部署除外）
+- 讀者留言（Giscus）：若有人在 moticore.org 文章頁留言，留言內容會由系統整理至 `memory/giscus-comments.md`。可用 §READ_REQUEST 讀取此檔案了解讀者回饋。文件樹中出現此檔案代表有新留言。

@@ -6,6 +6,7 @@
       <div class="article-body">
         <ContentRenderer :value="post" />
       </div>
+      <GiscusComments />
     </template>
   </main>
 </template>

@@ -45,6 +45,60 @@ def _build_file_tree(repo_root: Path) -> str:
     return "\n".join(lines)
 
 
+def _parse_recent_summaries(repo_root: Path, n: int = 5) -> list[str]:
+    """Parse the last n summary values from memory/action-log.md."""
+    log_path = repo_root / "memory" / "action-log.md"
+    if not log_path.exists():
+        return []
+    try:
+        text = log_path.read_text(encoding="utf-8")
+    except Exception:
+        return []
+    summaries = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("- **summary**:"):
+            value = stripped[len("- **summary**:"):].strip()
+            summaries.append(value)
+    return summaries[-n:]
+
+
+def _fetch_analytics(token: str, project_id: str) -> str:
+    """Fetch Vercel Analytics summary for the last 7 days.
+
+    Returns formatted string on success, "" if credentials missing,
+    or a fallback message on API error — never raises.
+    """
+    if not token or not project_id:
+        return ""
+    try:
+        now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+        week_ago_ms = now_ms - 7 * 24 * 3600 * 1000
+        resp = _requests.get(
+            "https://vercel.com/api/web/insights/stats",
+            headers={"Authorization": f"Bearer {token}"},
+            params={"projectId": project_id, "from": week_ago_ms, "to": now_ms},
+            timeout=15,
+        )
+        if resp.status_code == 403:
+            return "（Analytics 不可用：需確認 Vercel 方案）"
+        resp.raise_for_status()
+        data = resp.json()
+        # Response shape may vary by plan; access defensively
+        visitors_raw = data.get("visitors", {})
+        visitors = visitors_raw.get("value", visitors_raw) if isinstance(visitors_raw, dict) else visitors_raw
+        pageviews_raw = data.get("pageviews", {})
+        pageviews = pageviews_raw.get("value", pageviews_raw) if isinstance(pageviews_raw, dict) else pageviews_raw
+        lines = [f"訪客（7天）：{visitors}", f"頁面瀏覽（7天）：{pageviews}"]
+        top = (data.get("topPaths") or data.get("paths") or [])[:3]
+        if top:
+            top_str = "、".join(str(p.get("path", p.get("url", "?"))) for p in top)
+            lines.append(f"熱門頁面：{top_str}")
+        return "\n".join(lines)
+    except Exception:
+        return "（Analytics 不可用）"
+
+
 def _load_requested_files(repo_root: Path, dialogues_token: str = "") -> tuple[list[str], list[str]]:
     """Returns (note_paths, dialogue_filenames) from memory/read-requests.json.
 
@@ -143,7 +197,8 @@ def _layer1_motive(repo_root: Path) -> str:
 
 
 def _layer2_status(repo_root: Path, mode: str, cursor: dict,
-                   pending_issues: list, recent_log: str) -> str:
+                   pending_issues: list, recent_log: str,
+                   analytics_token: str = "", analytics_project_id: str = "") -> str:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
     if cursor:
@@ -176,6 +231,23 @@ def _layer2_status(repo_root: Path, mode: str, cursor: dict,
         f"\n當前任務（STATUS.md）：\n{status}\n"
         f"\n【文件樹】寫 read_request 路徑前必須對照此列表，禁止使用未出現的路徑：\n{file_tree}"
     )
+
+    if analytics_token and analytics_project_id:
+        analytics = _fetch_analytics(analytics_token, analytics_project_id)
+        if analytics:
+            body += f"\n\nVercel Analytics（最近7天）：\n{analytics}"
+
+    summaries = _parse_recent_summaries(repo_root)
+    non_empty = [s for s in summaries if s]
+    if non_empty:
+        most_common = max(set(non_empty), key=non_empty.count)
+        count = non_empty.count(most_common)
+        if count >= 4:
+            body += (
+                f"\n\n⚠️ 迴圈偵測警告（最近{len(summaries)}次心跳中{count}次summary相同）\n"
+                "請評估：你是否陷入重複行為？如果是，請主動改變行動，不要產生相同的summary。"
+            )
+
     return _section("【二】今日狀態　（程式碼生成，~200 tokens）", body)
 
 
@@ -287,12 +359,16 @@ def build_newspaper(
     mode: str,
     pending_issues: list,
     dialogues_token: str = "",
+    analytics_token: str = "",
+    analytics_project_id: str = "",
 ) -> str:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     header = f"╔{'═'*44}╗\n║  MOTICORE DAILY  {now}  [{mode}]\n╚{'═'*44}╝"
 
     l1 = _layer1_motive(repo_root)
-    l2 = _layer2_status(repo_root, mode, cursor, pending_issues, recent_log)
+    l2 = _layer2_status(repo_root, mode, cursor, pending_issues, recent_log,
+                        analytics_token=analytics_token,
+                        analytics_project_id=analytics_project_id)
 
     if mode == "READING":
         l3 = _layer3_reading(reading_chunk, reading_context)
