@@ -6,18 +6,31 @@
 
 ## 接手順序
 
-1. 讀 `_docs/strategy/ROADMAP.md` → 確認目前版本狀態與下一步方向
-2. 讀 `OVERVIEW.md` → 掌握系統架構與現況
-3. 讀 `core/STATUS.md` → 確認任務收件匣與偏離記錄
-4. 讀 `core/MOTIVE.md` → 確認代理身份與使命
+1. 確認本文件的 **CVP 狀態** 區塊 → 確認當前版本與 VP 路徑
+2. 讀 `_docs/strategy/ROADMAP.md` → 確認目前版本狀態與下一步方向
+3. 讀 `OVERVIEW.md` → 掌握系統架構與現況
+4. 讀 `core/STATUS.md` → 確認任務收件匣與偏離記錄
+5. 讀 `core/MOTIVE.md` → 確認代理身份與使命
 
 ---
 
-## 分支規則（強制）
+## CVP 狀態
 
-- **NEVER push to main**
-- 所有開發工作在指定 feature branch 進行
-- 目前工作分支：`claude/motivation-core-prototype-njnn4`
+| 項目 | 內容 |
+|------|------|
+| 當前版本 | v0.5.0 |
+| VP 路徑 | `_docs/versions/v0.5.0/VP.md`（main）|
+| WN 路徑 | 無（v0.5.0 尚未開始，無 WN）|
+| 版本狀態 | seed — 尚未開始規劃 |
+| 最後更新 | 2026-06-21 |
+
+---
+
+## 分支規則
+
+- **程式碼變更**：feature branch → PR → merge main
+- **CVP 文件（VP / WN）**：直接建立在 main，不使用 feature branch
+- 目前無進行中的 feature branch
 
 ---
 
@@ -25,7 +38,8 @@
 
 | 需要知道 | 去哪裡找 |
 |---------|---------|
-| 目前版本 / 下一步 | `_docs/strategy/ROADMAP.md` |
+| 當前版本 / VP 路徑 | 本文件 CVP 狀態區塊（上方）|
+| 版本方向 / 下一步 | `_docs/strategy/ROADMAP.md` |
 | 各版本覆盤與計畫書 | `_docs/versions/<版本號>/` |
 | 系統架構與規劃 | `OVERVIEW.md` |
 | 代理身份與使命 | `core/MOTIVE.md` |
@@ -44,14 +58,14 @@ _docs/
 │   └── ROADMAP.md              ← 更新版本狀態、記錄下一步
 └── versions/
     └── <版本號>/               ← 每個版本一個資料夾
-        ├── 版本更新計畫書.md
-        ├── 審查報告.md
-        └── 覆盤.md
+        ├── VP.md               ← CVP 主版本文件（一律在 main）
+        └── WN*.md              ← Worker 工作筆記（執行中時存在；封版後刪除）
 ```
 
 每次版本更新結束後，必須：
-1. 在 `_docs/versions/<版本號>/` 存入計畫書、審查報告、覆盤
+1. 在 `_docs/versions/<版本號>/` 完成 VP 封版確認
 2. 更新 `_docs/strategy/ROADMAP.md` 的版本狀態
+3. 更新本文件的 CVP 狀態區塊
 
 ---
 
@@ -79,6 +93,6 @@ _docs/
 ## 禁止行為
 
 - 不得修改 `agent/` 目錄下的程式碼
-- 不得直接 push 到 `main`
+- 不得直接 push 到 `main`（程式碼變更）；CVP 文件除外
 - 不得在未讀取 STATUS.md 的情況下宣稱已掌握任務狀態
 - 不得在未驗證的情況下宣告修復完成
