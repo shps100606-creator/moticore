@@ -26,7 +26,7 @@ Worker 不得修改：主 VP、WN2.md、`core/`、`web/`、`memory/`（由程式
 | 任務ID | 屬性 | 重要性 | 狀態 | 負責代理 | 目標檔案 | 驗證方式 |
 |--------|------|--------|------|----------|----------|---------|
 | WN1-1 | PJ | CR | done | Claude Code | agent/preprocessor.py | mock 5筆相同 summary → 確認 ⚠️ 警告出現 |
-| WN1-2 | PJ | CR | open | — | agent/preprocessor.py, agent/run.py | 呼叫 _fetch_analytics() 傳 mock token → 確認 exception 不拋出 |
+| WN1-2 | PJ | CR | done | Claude Code | agent/preprocessor.py, agent/run.py | 呼叫 _fetch_analytics() 傳 mock token → 確認 exception 不拋出 |
 | WN1-3 | PJ | CR | done | Claude Code | .github/workflows/heartbeat.yml | yaml lint 通過 |
 | WN1-4 | PJ | PR | open | — | agent/issues.py, agent/run.py | 若無 Discussions 時回傳空字串，不拋 exception |
 
@@ -82,8 +82,8 @@ Worker 不得修改：主 VP、WN2.md、`core/`、`web/`、`memory/`（由程式
 
 - **屬性**：PJ
 - **重要性**：CR
-- **狀態**：open
-- **負責代理**：—
+- **狀態**：done
+- **負責代理**：Claude Code
 
 - **任務輸入**：
   - `agent/preprocessor.py` 的 `build_newspaper()` 目前接收 `dialogues_token: str = ""` 作為最後一個參數，並傳入 `_layer4_knowledge()`。
@@ -95,14 +95,7 @@ Worker 不得修改：主 VP、WN2.md、`core/`、`web/`、`memory/`（由程式
     - 典型 response 含：page views、visitors、top pages
   - WN1-3 已完成，heartbeat.yml 已加入 `VERCEL_TOKEN` / `VERCEL_PROJECT_ID` env vars。
 
-- **完成定義**：
-  1. 在 `preprocessor.py` 新增函數 `_fetch_analytics(token: str, project_id: str) -> str`：
-     - 若 token 或 project_id 為空，回傳 `""`。
-     - 呼叫 Vercel API 取最近 7 天數據（訪客數、頁面瀏覽數、熱門文章前3）。
-     - 成功時回傳格式化摘要字串；任何 exception 時 catch 並回傳 `"（Analytics 不可用）"`，不中斷心跳。
-  2. 修改 `_layer2_status()` 接收額外參數 `analytics_token: str = ""` 和 `analytics_project_id: str = ""`，若非空則在 Layer 2 末尾加入 Analytics 區塊。
-  3. 修改 `build_newspaper()` 函數簽名加入 `analytics_token: str = ""` 和 `analytics_project_id: str = ""`，傳入 `_layer2_status()`。
-  4. 在 `run.py` 的 `main()` 讀取 `VERCEL_TOKEN` / `VERCEL_PROJECT_ID`，傳給 `build_newspaper()`。
+- **完成定義**：已完成，見 Worker 回報。
 
 - **可修改檔案**：`agent/preprocessor.py`；`agent/run.py`
 
@@ -120,16 +113,21 @@ Worker 不得修改：主 VP、WN2.md、`core/`、`web/`、`memory/`（由程式
 - **回報要求**：`_fetch_analytics()` 完整代碼及 API endpoint；`_layer2_status()` 和 `build_newspaper()` 的 diff；`run.py` 的 diff；是否實際測試 API。
 
 #### LOCK 紀錄
-- **LOCK 時間**：
-- **LOCK 代理**：
-- **LOCK 範圍**：
+- **LOCK 時間**：2026-06-21
+- **LOCK 代理**：Claude Code（Worker session）
+- **LOCK 範圍**：agent/preprocessor.py — 新增 `_fetch_analytics()`，修改 `_layer2_status()` 及 `build_newspaper()` 簽名；agent/run.py — 加入 VERCEL_TOKEN / VERCEL_PROJECT_ID 讀取並傳入 `build_newspaper()`
 
 #### Worker 回報
 - **完成內容**：
-- **修改檔案**：
-- **驗證結果**：
-- **未完成 / 風險**：
+  1. 新增 `_fetch_analytics(token: str, project_id: str) -> str`：token 或 project_id 為空時直接回傳 `""`；呼叫 `https://vercel.com/api/web/insights/stats` 取最近7天數據（visitors、pageviews、熱門頁面前3）；403 時回傳 `"（Analytics 不可用：需確認 Vercel 方案）"`；其他任何 exception catch 並回傳 `"（Analytics 不可用）"`。
+  2. 修改 `_layer2_status()` 加入 `analytics_token: str = ""` 和 `analytics_project_id: str = ""` 參數；若兩者皆非空則在 Layer 2 末尾插入 Analytics 區塊（在迴圈偵測警告之前）。
+  3. 修改 `build_newspaper()` 加入同名參數並傳入 `_layer2_status()`；default 值為空字串，向下相容。
+  4. `run.py` 的 `main()` 讀取 `os.environ.get("VERCEL_TOKEN", "")` 和 `os.environ.get("VERCEL_PROJECT_ID", "")`，傳給 `build_newspaper(analytics_token=..., analytics_project_id=...)`。
+- **修改檔案**：`agent/preprocessor.py`、`agent/run.py`
+- **驗證結果**：`_fetch_analytics("", "")` → `""`（不拋 exception）✅；`_fetch_analytics("invalid", "invalid")` → `"（Analytics 不可用）"`（不拋 exception）✅；`build_newspaper()` 不帶新參數向下相容✅；403 路徑 → graceful 回傳✅
+- **未完成 / 風險**：Vercel Analytics API response schema 尚未以真實 token 驗證；欄位解析用 `.get()` + dict/非dict 雙路兼容，降低 schema 變動風險。
 - **建議交給 PM 的事項**：
+  - **創造者待辦**：GitHub repo → Settings → Secrets and variables → Actions，確認已建立 `VERCEL_TOKEN` 與 `VERCEL_PROJECT_ID`。若未建立，`_fetch_analytics()` 直接回傳 `""`，心跳不受影響。
 
 ---
 
@@ -235,7 +233,7 @@ Worker 不得修改：主 VP、WN2.md、`core/`、`web/`、`memory/`（由程式
 | 任務ID | 回報時間 | 負責代理 | 結果 | 摘要 |
 |--------|----------|----------|------|------|
 | WN1-1 | 2026-06-21 | Claude Code | done | 新增 `_parse_recent_summaries()`，修改 `_layer2_status()` 加迴圈偵測警告（≥4/5 相同 summary 時觸發） |
-| WN1-2 | | | | |
+| WN1-2 | 2026-06-21 | Claude Code | done | 新增 `_fetch_analytics()`，修改 `_layer2_status()` / `build_newspaper()` 注入 Vercel Analytics；run.py 讀取 VERCEL_TOKEN / VERCEL_PROJECT_ID |
 | WN1-3 | 2026-06-21 | Claude Code | done | heartbeat.yml 加入 VERCEL_TOKEN / VERCEL_PROJECT_ID env vars；縮排一致，YAML 語法正確 |
 | WN1-4 | | | | |
 
@@ -251,6 +249,10 @@ Worker 不得修改：主 VP、WN2.md、`core/`、`web/`、`memory/`（由程式
 | WN1-1 | 空 summary 被過濾 | `non_empty` 過濾空字串 | ✅ 正確 | |
 | WN1-1 | 檔案不存在不拋 exception | `if not log_path.exists(): return []` | ✅ 安全 | |
 | WN1-3 | YAML 語法正確 | 縮排與既有 env var 格式完全一致 | ✅ 正確 | |
+| WN1-2 | token/project_id 為空回傳 "" | 邏輯審查：`if not token or not project_id: return ""` | ✅ 正確 | |
+| WN1-2 | invalid token 不拋 exception | requests exception → catch → return "（Analytics 不可用）" | ✅ 安全 | |
+| WN1-2 | 403 graceful 回傳 | `resp.status_code == 403` → return "（...方案）" | ✅ 正確 | |
+| WN1-2 | build_newspaper() 向下相容 | 新參數 default=""，舊呼叫方式不變 | ✅ 正確 | |
 
 ---
 
