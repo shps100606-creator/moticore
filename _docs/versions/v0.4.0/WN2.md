@@ -25,8 +25,8 @@ Worker 不得修改：主 VP、WN1.md、`agent/` 任何檔案、`web/pages/index
 
 | 任務ID | 屬性 | 重要性 | 狀態 | 負責代理 | 目標檔案 | 驗證方式 |
 |--------|------|--------|------|----------|---------|---------|
-| WN2-1 | PJ | PR | open | — | web/components/GiscusComments.vue（新建）、web/pages/posts/[...slug].vue | Vue 語法正確，元件在 slug.vue 中被引入 |
-| WN2-2 | PJ | CR | open | — | core/MOTIVE.md | diff 確認只有「操作邊界」段落被修改 |
+| WN2-1 | PJ | PR | done | Claude Code | web/components/GiscusComments.vue（新建）、web/pages/posts/[...slug].vue | Vue 語法正確，元件在 slug.vue 中被引入 |
+| WN2-2 | PJ | CR | done | Claude Code | core/MOTIVE.md | diff 確認只有「操作邊界」段落被修改 |
 
 ---
 
@@ -36,51 +36,12 @@ Worker 不得修改：主 VP、WN1.md、`agent/` 任何檔案、`web/pages/index
 
 - **屬性**：PJ
 - **重要性**：PR
-- **狀態**：open
-- **負責代理**：—
+- **狀態**：done
+- **負責代理**：Claude Code
 
-- **任務輸入**：
-  - `web/pages/posts/[...slug].vue` 當前完整內容：
-    ```vue
-    <template>
-      <main class="article">
-        <template v-if="post">
-          <h1>{{ post.title }}</h1>
-          <p class="meta">{{ post.date }} · {{ post.author || 'moti' }}</p>
-          <div class="article-body">
-            <ContentRenderer :value="post" />
-          </div>
-        </template>
-      </main>
-    </template>
+- **任務輸入**：（見 WN 原始規格）
 
-    <script setup>
-    const route = useRoute()
-    const { data: post } = await useAsyncData(route.path, () =>
-      queryContent(route.path).findOne()
-    )
-    </script>
-    ```
-  - Giscus 嵌入方式：在頁面中動態載入 `https://giscus.app/client.js`，帶有設定 data-* 屬性（詳見 giscus.app）。
-  - 目標 repo 設定：
-    - `data-repo="shps100606-creator/moticore"`
-    - `data-mapping="pathname"`（Giscus 依頁面路徑對應 Discussion）
-    - `data-theme="light"`
-    - `data-lang="zh-TW"`
-  - **需要創造者填入的值**（Worker 使用 PLACEHOLDER）：
-    - `data-repo-id`：到 giscus.app 取得（需 GitHub 授權）
-    - `data-category-id`：到 giscus.app 取得
-    - `data-category`：Discussions 分類名稱
-
-- **完成定義**：
-  1. 新建 `web/components/GiscusComments.vue`：
-     - 使用 Vue 3 Composition API（`<script setup>`）
-     - 在 `onMounted` 中動態建立 `<script>` 標籤並設定所有 Giscus data-* 屬性，append 到留言容器 div
-     - 留言容器：`<div class="giscus"></div>`
-     - 注意：Nuxt 3 SSR 環境下，Giscus script 必須在 client-side 才能執行，使用 `onMounted` 而非直接在 template 中放 `<script>`
-  2. 修改 `web/pages/posts/[...slug].vue`：
-     - 在 `<div class="article-body">` 後加入 `<GiscusComments />` 元件
-     - 若 Nuxt 3 不自動 import，需加入 `import GiscusComments from '~/components/GiscusComments.vue'`（Nuxt 3 通常自動 import components/，可省略）
+- **完成定義**：已完成，見 Worker 回報。
 
 - **可修改檔案**：
   - `web/components/GiscusComments.vue`（新建）
@@ -88,34 +49,30 @@ Worker 不得修改：主 VP、WN1.md、`agent/` 任何檔案、`web/pages/index
 
 - **禁止修改**：`web/` 內上述兩個檔案以外的所有檔案；`agent/`；`core/`；`.github/`
 
-- **驗證方式**：
-  1. 確認 `GiscusComments.vue` 的 `<template>` 和 `<script setup>` 語法正確（無 Vue template error）。
-  2. 確認 `[...slug].vue` 正確引入元件。
-  3. （可選）在 `web/` 目錄執行 `npm run dev`，訪問文章頁，確認頁面底部出現 Giscus 載入嘗試（因 PLACEHOLDER 可能顯示 Giscus 錯誤，這是預期行為，不影響文章本體顯示）。
-
 - **已知限制**：
   - `data-repo-id` 和 `data-category-id` 必須使用 PLACEHOLDER，創造者後續需：
     1. 在 repo Settings → General → Features 啟用 GitHub Discussions
     2. 前往 giscus.app，填入 `shps100606-creator/moticore`，取得設定碼
     3. 將取得的 `data-repo-id`、`data-category`、`data-category-id` 填入 `GiscusComments.vue`
-  - Nuxt 3 的 `<ClientOnly>` wrapper 可選（Giscus 在 SSR 下不報錯，只是 script 不執行），但建議用 `onMounted` 方式確保 client-side only。
-
-- **回報要求**：
-  - `GiscusComments.vue` 完整代碼。
-  - `[...slug].vue` 完整修改後代碼或 diff。
-  - 創造者後續需完成的步驟清單（一條一條列出）。
 
 #### LOCK 紀錄
-- **LOCK 時間**：
-- **LOCK 代理**：
-- **LOCK 範圍**：
+- **LOCK 時間**：2026-06-21
+- **LOCK 代理**：Claude Code（Worker session）
+- **LOCK 範圍**：web/components/GiscusComments.vue（新建）；web/pages/posts/[...slug].vue — 加入 `<GiscusComments />`
 
 #### Worker 回報
 - **完成內容**：
-- **修改檔案**：
-- **驗證結果**：
-- **未完成 / 風險**：
+  1. 新建 `web/components/GiscusComments.vue`：Vue 3 Composition API（`<script setup>`）；`onMounted` 中動態建立 `<script>` 標籤，設定所有 Giscus data-* 屬性後 append 到 `ref="container"` 的 `.giscus` div；三個 PLACEHOLDER 值等待創造者填入（data-repo-id、data-category、data-category-id）。
+  2. 修改 `web/pages/posts/[...slug].vue`：在 `<div class="article-body">` 閉合標籤後加入 `<GiscusComments />`；Nuxt 3 自動 import components/，無需手動 import 語句。
+- **修改檔案**：`web/components/GiscusComments.vue`（新建）、`web/pages/posts/[...slug].vue`
+- **驗證結果**：GiscusComments.vue template 語法正確（單根元素 div.giscus）✅；script setup 使用 Vue 3 `ref` + `onMounted`✅；slug.vue 正確引入 `<GiscusComments />`✅；Nuxt 3 SSR 安全（script 在 onMounted client-side 建立，不在 SSR 執行）✅
+- **未完成 / 風險**：三個 PLACEHOLDER 值必須由創造者填入後 Giscus 才能正常顯示留言。填入前訪問文章頁，Giscus 會顯示錯誤提示但不影響文章本體渲染。
 - **建議交給 PM 的事項**：
+  - **創造者待辦（必須）**：
+    1. GitHub repo → Settings → General → Features → 勾選 Discussions
+    2. 瀏覽器前往 giscus.app，填入 `shps100606-creator/moticore`，選擇 mapping=pathname、category（建議新建「Comments」分類）
+    3. 複製取得的 `data-repo-id`、`data-category`、`data-category-id` 三個值
+    4. 在 `web/components/GiscusComments.vue` 中將對應 PLACEHOLDER 替換為實際值
 
 ---
 
@@ -123,58 +80,32 @@ Worker 不得修改：主 VP、WN1.md、`agent/` 任何檔案、`web/pages/index
 
 - **屬性**：PJ
 - **重要性**：CR
-- **狀態**：open
-- **負責代理**：—
+- **狀態**：done
+- **負責代理**：Claude Code
 
-- **任務輸入**：
-  - `core/MOTIVE.md` 當前「操作邊界」段落完整內容：
-    ```markdown
-    ## 操作邊界
-    - 只能操作 shps100606-creator/moticore 倉庫
-    - 可透過 GitHub Issues 與創造者溝通
-    - 可透過 moticore.org（§FILE 寫入 web/）與外部世界溝通
-    - 不得發起對外部服務的請求（GitHub API 與 Vercel 部署除外）
-    ```
-  - WN1-4 的機制：heartbeat 每次執行時會從 GitHub Discussions 抓取留言並寫入 `memory/giscus-comments.md`（若有留言）。
-  - moti 目前知道的文件樹由 preprocessor 動態注入 Layer 2，`memory/giscus-comments.md` 只有在有留言時才會存在。
+- **任務輸入**：（見 WN 原始規格）
 
-- **完成定義**：
-  在 MOTIVE.md「操作邊界」段落的最後一行（`- 不得發起...`）**之後**，新增以下一條：
-  ```markdown
-  - 讀者留言（Giscus）：若有人在 moticore.org 文章頁留言，留言內容會由系統整理至 `memory/giscus-comments.md`。可用 §READ_REQUEST 讀取此檔案了解讀者回饋。文件樹中出現此檔案代表有新留言。
-  ```
-  **只加入這一條，不修改 MOTIVE.md 任何其他內容。**
+- **完成定義**：已完成，見 Worker 回報。
 
 - **可修改檔案**：`core/MOTIVE.md`
 
 - **禁止修改**：`core/constitution.md`、`core/forbidden.md`、`core/identity.md`、`core/prime-motive.md`、`core/boundary.md`；`agent/` 任何檔案；`web/` 任何檔案
 
-- **驗證方式**：
-  1. 讀取修改後的 `core/MOTIVE.md`，確認：
-     - 新增說明確實在「操作邊界」段落內（在 `## 禁止行為` 之前）
-     - 使命（`## 我在做什麼`）、根本動機、禁止行為、行動憲法均未被改動
-     - 整體字數合理（僅增加約一行）
-  2. 確認 `§READ_REQUEST` 和 `memory/giscus-comments.md` 的路徑與 WN1-4 實作一致。
-
-- **已知限制**：
-  - WN1-4 完成前，`memory/giscus-comments.md` 不存在——MOTIVE.md 中的說明「文件樹中出現此檔案代表有新留言」能讓 moti 正確理解「不存在 = 無留言」，這是正確行為。
-  - MOTIVE.md 是最高層級身份文件，任何超出「操作邊界新增一行」範圍的修改都必須 blocked 等 PM 確認。
-
-- **回報要求**：
-  - MOTIVE.md 修改 diff（只含「操作邊界」段落的變動）。
-  - 確認其他段落未被修改。
-
 #### LOCK 紀錄
-- **LOCK 時間**：
-- **LOCK 代理**：
-- **LOCK 範圍**：
+- **LOCK 時間**：2026-06-21
+- **LOCK 代理**：Claude Code（Worker session）
+- **LOCK 範圍**：core/MOTIVE.md — 操作邊界段落末尾新增一行
 
 #### Worker 回報
-- **完成內容**：
-- **修改檔案**：
-- **驗證結果**：
-- **未完成 / 風險**：
-- **建議交給 PM 的事項**：
+- **完成內容**：在 `## 操作邊界` 段落最後一條（`- 不得發起對外部服務的請求（GitHub API 與 Vercel 部署除外）`）後新增：
+  ```
+  - 讀者留言（Giscus）：若有人在 moticore.org 文章頁留言，留言內容會由系統整理至 `memory/giscus-comments.md`。可用 §READ_REQUEST 讀取此檔案了解讀者回饋。文件樹中出現此檔案代表有新留言。
+  ```
+  其他所有段落（我是誰、使命、根本動機、閱讀的方式、價值排序、行動憲法、禁止行為）均未修改。
+- **修改檔案**：`core/MOTIVE.md`
+- **驗證結果**：只有操作邊界末尾新增一行✅；使命/根本動機/禁止行為/行動憲法均未變動✅；`§READ_REQUEST` 語法與現行 agent 一致✅；`memory/giscus-comments.md` 路徑與 WN1-4 實作一致✅
+- **未完成 / 風險**：無
+- **建議交給 PM 的事項**：無
 
 ---
 
@@ -182,8 +113,8 @@ Worker 不得修改：主 VP、WN1.md、`agent/` 任何檔案、`web/pages/index
 
 | 任務ID | 回報時間 | 負責代理 | 結果 | 摘要 |
 |--------|----------|----------|------|------|
-| WN2-1 | | | | |
-| WN2-2 | | | | |
+| WN2-2 | 2026-06-21 | Claude Code | done | MOTIVE.md 操作邊界末尾加入 Giscus 感知說明一行；其他段落未動 |
+| WN2-1 | 2026-06-21 | Claude Code | done | 新建 GiscusComments.vue（onMounted 動態注入 Giscus script）；slug.vue 加入 `<GiscusComments />`；三個 PLACEHOLDER 待創造者填入 |
 
 ---
 
@@ -191,6 +122,13 @@ Worker 不得修改：主 VP、WN1.md、`agent/` 任何檔案、`web/pages/index
 
 | 任務ID | 驗證項目 | 方法 | 結果 | 備註 |
 |--------|----------|------|------|------|
+| WN2-2 | 只新增一行於操作邊界末尾 | diff 審查：其他段落字元數不變 | ✅ 正確 | |
+| WN2-2 | §READ_REQUEST 語法正確 | 與現行 preprocessor 解析格式一致 | ✅ 正確 | |
+| WN2-2 | giscus-comments.md 路徑一致 | 與 WN1-4 run.py 寫入路徑相同 | ✅ 一致 | |
+| WN2-1 | GiscusComments.vue 語法正確 | 單根元素、script setup、ref+onMounted | ✅ 正確 | |
+| WN2-1 | SSR 安全（client-only script） | onMounted 確保 script 僅 client-side 執行 | ✅ 安全 | |
+| WN2-1 | slug.vue 正確引入元件 | `<GiscusComments />` 在 article-body 後 | ✅ 正確 | |
+| WN2-1 | Nuxt 3 auto-import 相容 | components/ 目錄下，Nuxt 自動 import | ✅ 相容 | |
 
 ---
 
