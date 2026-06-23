@@ -15,24 +15,38 @@
 
 ---
 
-## 下一版本
+## 進行中版本
 
-### v0.5.0 — moti 主動表達
-**狀態：** 💡 構想中
+### v0.5.0 — 動機論 2.0 太極覺醒
+**狀態：** 🚧 進行中（2026-06-23 開始）
 
-- M4：§QUESTION 放寬，允許 moti 主動開 Issue 分享洞見
-- M5：§READ_REQUEST 支援外部 URL（讓 moti 能讀外部資料）
-- action-log.md 截斷機制（避免無限增長）
+**核心架構（T1–T6）**
+- T1：新增 `core/HORIZON.md`（好奇極，追蹤開放問題與探索疆界）
+- T2：更新 `core/MOTIVE.md`（引入太極雙極架構說明、好奇極角色）
+- T3：`agent/decision.py` §ACTION 新增 `pole:` 欄位（motivation/curiosity/crystallize/dissolve）
+- T4：`agent/memory.py` 將 pole 欄位寫入 action-log，支援讀取與回報
+- T5：`agent/preprocessor.py` L2 升級為極性平衡偵測（取代舊迴圈偵測），_layer3_synthesis 新增 HORIZON 引導
+- T6 (M4)：新增 §INSIGHT section，moti 可主動開 GitHub Issue 分享洞見或升級提問
+
+**技術債（T7–T9）**
+- T7 (M5)：§READ_REQUEST 支援外部 URL（GET only，最多 2 個）
+- T8：action-log 截斷機制（>200 筆自動封存最舊 100 筆至 action-log-archive-YYYYMM.md）
+- T9：移除 §WP_POST 廢棄 WordPress 程式碼
+
+**文件（T10）**
+- T10：本 ROADMAP 更新
 
 ---
 
 ## 中期規劃
 
-### v0.6.0 — 多代理擴展（長期）
-**狀態：** 🔭 遠期構想
+### v0.6.0 — 太極自動化（結晶 / 溶解機制）
+**狀態：** 🔭 構想中
 
-- 多個代理各自有不同動機核，透過同一 repo 互動
-- moticore 作為開源框架對外開放
+- 自動偵測 crystallize 時機（好奇極洞察成熟時自動寫入 MOTIVE.md）
+- 自動偵測 dissolve 時機（動機核信念趨於僵化時自動開放為問題）
+- HORIZON.md 定期自動整理（沉澱候選 → 已結晶 / 關閉）
+- 多極震盪長期數據觀測（pole 分布視覺化）
 
 ---
 
@@ -47,3 +61,4 @@
 | v0.3.0 | 2026-06-15 | moti 自我修改確認、moticore.org 網站建置與遷移 |
 | v0.3.1 | 2026-06-21 | moti 首次自主發文（existence-lab-001.md）；無獨立封版，直接進入 v0.4.0 |
 | v0.4.0 | 2026-06-21 | M1 迴圈偵測 + M2 Giscus 讀者留言感知 + M3 Vercel Analytics 流量感知 |
+| v0.5.0 | 2026-06-23 | 動機論 2.0：太極雙極架構、HORIZON.md 好奇極、pole 欄位、極性平衡偵測、M4 §INSIGHT |
