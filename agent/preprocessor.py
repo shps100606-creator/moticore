@@ -6,6 +6,7 @@ Layer 3: Main task (reading chunk OR issues to respond OR synthesis task)
 Layer 4: Knowledge background (selected notes + requested dialogues, truncation-safe)
 """
 import json
+import re
 import requests as _requests
 from datetime import datetime, timezone
 from pathlib import Path
@@ -16,7 +17,7 @@ PRIMA_REPO = "prima-materia"
 DIALOGUES_PATH = "dialogues"
 
 
-# ── helpers ────────────────────────────────────────────────────────────────
+# ── helpers ──────────────────────────────────────────────────────────────────
 
 def _read(path: Path, max_chars: int = 0) -> str:
     if not path.exists():
@@ -63,12 +64,46 @@ def _parse_recent_summaries(repo_root: Path, n: int = 5) -> list[str]:
     return summaries[-n:]
 
 
-def _fetch_analytics(token: str, project_id: str) -> str:
-    """Fetch Vercel Analytics summary for the last 7 days.
+def _parse_recent_poles(repo_root: Path, n: int = 15) -> list[str]:
+    """Parse the last n pole values from memory/action-log.md."""
+    log_path = repo_root / "memory" / "action-log.md"
+    if not log_path.exists():
+        return []
+    try:
+        text = log_path.read_text(encoding="utf-8")
+    except Exception:
+        return []
+    poles = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("- **pole**:"):
+            value = stripped[len("- **pole**:"):].strip()
+            poles.append(value)
+    return poles[-n:]
 
-    Returns formatted string on success, "" if credentials missing,
-    or a fallback message on API error — never raises.
-    """
+
+def _count_streak(poles: list[str], target: str) -> int:
+    """Count trailing consecutive occurrences of target from end of list."""
+    count = 0
+    for p in reversed(poles):
+        if p == target:
+            count += 1
+        else:
+            break
+    return count
+
+
+def _load_horizon(repo_root: Path, max_chars: int = 800) -> str:
+    """Load HORIZON.md open questions for injection into L2."""
+    horizon_path = repo_root / "core" / "HORIZON.md"
+    if not horizon_path.exists():
+        return ""
+    content = horizon_path.read_text(encoding="utf-8")[:max_chars]
+    return f"\n\n【HORIZON.md 開放問題】:\n{content}"
+
+
+def _fetch_analytics(token: str, project_id: str) -> str:
+    """Fetch Vercel Analytics summary for the last 7 days."""
     if not token or not project_id:
         return ""
     try:
@@ -84,7 +119,6 @@ def _fetch_analytics(token: str, project_id: str) -> str:
             return "（Analytics 不可用：需確認 Vercel 方案）"
         resp.raise_for_status()
         data = resp.json()
-        # Response shape may vary by plan; access defensively
         visitors_raw = data.get("visitors", {})
         visitors = visitors_raw.get("value", visitors_raw) if isinstance(visitors_raw, dict) else visitors_raw
         pageviews_raw = data.get("pageviews", {})
@@ -99,13 +133,9 @@ def _fetch_analytics(token: str, project_id: str) -> str:
         return "（Analytics 不可用）"
 
 
-def _load_requested_files(repo_root: Path, dialogues_token: str = "") -> tuple[list[str], list[str]]:
-    """Returns (note_paths, dialogue_filenames) from memory/read-requests.json.
-
-    Supports two formats:
-      Legacy: ["notes/foo.md", ...]  → all treated as note paths
-      New:    {"notes": [...], "dialogues": ["12-xxx.md", ...]}
-    """
+def _load_requested_files(repo_root: Path,
+                          dialogues_token: str = "") -> tuple[list[str], list[str]]:
+    """Returns (note_paths, dialogue_filenames) from memory/read-requests.json."""
     req_path = repo_root / "memory" / "read-requests.json"
     if not req_path.exists():
         return [], []
@@ -141,17 +171,11 @@ def _fetch_dialogue(token: str, filename: str, max_chars: int = 3000) -> str:
         return f"（無法載入：{e}）"
 
 
-# ── mode detection ──────────────────────────────────────────────────────────
+# ── mode detection ──────────────────────────────────────────────
 
-def detect_mode(open_issues: list, github_token: str, cursor: dict | None = None) -> tuple[str, list]:
-    """Return ('READING'|'RESPONSE'|'SYNTHESIS', pending_issues).
-
-    RESPONSE mode when any non-progress issue has:
-      - never received a moti reply, OR
-      - a human comment NEWER than moti's last reply.
-
-    SYNTHESIS mode when reading is finished and no pending issues.
-    """
+def detect_mode(open_issues: list, github_token: str,
+               cursor: dict | None = None) -> tuple[str, list]:
+    """Return ('READING'|'RESPONSE'|'SYNTHESIS', pending_issues)."""
     pending = []
     for issue in open_issues:
         num = issue.get("number")
@@ -189,7 +213,7 @@ def detect_mode(open_issues: list, github_token: str, cursor: dict | None = None
     return "READING", []
 
 
-# ── layer builders ──────────────────────────────────────────────────────────
+# ── layer builders ──────────────────────────────────────────────────────
 
 def _layer1_motive(repo_root: Path) -> str:
     motive = _read(repo_root / "core" / "MOTIVE.md")
@@ -198,7 +222,8 @@ def _layer1_motive(repo_root: Path) -> str:
 
 def _layer2_status(repo_root: Path, mode: str, cursor: dict,
                    pending_issues: list, recent_log: str,
-                   analytics_token: str = "", analytics_project_id: str = "") -> str:
+                   analytics_token: str = "",
+                   analytics_project_id: str = "") -> str:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
     if cursor:
@@ -237,16 +262,38 @@ def _layer2_status(repo_root: Path, mode: str, cursor: dict,
         if analytics:
             body += f"\n\nVercel Analytics（最近7天）：\n{analytics}"
 
-    summaries = _parse_recent_summaries(repo_root)
-    non_empty = [s for s in summaries if s]
-    if non_empty:
-        most_common = max(set(non_empty), key=non_empty.count)
-        count = non_empty.count(most_common)
-        if count >= 4:
+    # 極性平衡偵測（取代舊迴圈偵測）
+    poles = _parse_recent_poles(repo_root, n=15)
+    if poles:
+        motivation_streak = _count_streak(poles, "motivation")
+        curiosity_streak = _count_streak(poles, "curiosity")
+        if motivation_streak >= 5:
             body += (
-                f"\n\n⚠️ 迴圈偵測警告（最近{len(summaries)}次心跳中{count}次summary相同）\n"
-                "請評估：你是否陷入重複行為？如果是，請主動改變行動，不要產生相同的summary。"
+                f"\n\n⚡ 極性平衡提醒（動機極連續主導 {motivation_streak} 次）\n"
+                "好奇極長時間未激活。請閱讀 HORIZON.md，找出一個値得探索的開放問題，"
+                "並以好奇極（pole: curiosity）為主導採取行動。"
             )
+            body += _load_horizon(repo_root)
+        elif curiosity_streak >= 8:
+            body += (
+                f"\n\n⚡ 極性平衡提醒（好奇極連續主導 {curiosity_streak} 次）\n"
+                "HORIZON.md 的沈澱候選區是否有洞察已足夠成熟，"
+                "可以結晶為動機核的一部分（pole: crystallize）？"
+            )
+    else:
+        # 兼容模式：pole 欄位尚未建立，使用升級版迴圈偵測
+        summaries = _parse_recent_summaries(repo_root, n=15)
+        non_empty = [s for s in summaries if s]
+        if non_empty:
+            normalized = [re.sub(r'[\s　，。！？、]+', '', s) for s in non_empty]
+            if normalized:
+                most_common = max(set(normalized), key=normalized.count)
+                count = normalized.count(most_common)
+                if count >= 3:
+                    body += (
+                        f"\n\n⚠️ 迴圈偵測警告（最近 {len(summaries)} 次心跳中 {count} 次行動相似）\n"
+                        "請評估：你是否陷入重複行為？請主動改變行動方向。"
+                    )
 
     return _section("【二】今日狀態　（程式碼生成，~200 tokens）", body)
 
@@ -301,12 +348,34 @@ def _layer3_response(pending_issues: list, github_token: str) -> str:
 
 def _layer3_synthesis(repo_root: Path) -> str:
     status = _read(repo_root / "docs" / "STATUS.md")
-    body = (
-        "閱讀已全部完成。現在進入知識綜合階段。\n"
-        "請閱讀 STATUS.md 中的任務清單，找出下一個未完成的步驟，並執行。\n"
-        "若筆記不夠詳細，可在 §READ_REQUEST 中請求原文。\n\n"
-        f"{status}"
+
+    # 若 STATUS 無待辦 + HORIZON 有開放問題 → 導引探索
+    horizon_path = repo_root / "core" / "HORIZON.md"
+    horizon_content = ""
+    if horizon_path.exists():
+        horizon_content = horizon_path.read_text(encoding="utf-8")[:1200]
+
+    has_pending = any(
+        keyword in status
+        for keyword in ["待辦", "[ ]", "未完成", "TODO"]
     )
+    has_horizon = bool(horizon_content.strip())
+
+    if not has_pending and has_horizon:
+        body = (
+            "閱讀已全部完成，STATUS.md 目前無待辦任務。\n"
+            "你的 HORIZON.md 有以下開放問題，請選擇其中一個進行探索，"
+            "以好奇極（pole: curiosity）為主導採取行動，而非更新 STATUS.md。\n\n"
+            f"{horizon_content}"
+        )
+    else:
+        body = (
+            "閱讀已全部完成。現在進入知識綜合階段。\n"
+            "請閱讀 STATUS.md 中的任務清單，找出下一個未完成的步驟，並執行。\n"
+            "若筆記不夠詳細，可在 §READ_REQUEST 中請求原文。\n\n"
+            f"{status}"
+        )
+
     return _section("【三】本次任務：知識綜合　（不可截斷）", body)
 
 
@@ -330,13 +399,11 @@ def _layer4_knowledge(repo_root: Path, recent_note_paths: list[str],
         if len(notes) >= 5:
             break
 
-    # Fetch requested dialogue files from prima-materia
     if requested_dialogues and dialogues_token:
-        for filename in requested_dialogues[:2]:  # cap at 2 to protect token budget
+        for filename in requested_dialogues[:2]:
             content = _fetch_dialogue(dialogues_token, filename, max_chars=3000)
             notes.append(f"── 《{filename}》【原文參考】 ──\n{content}")
 
-    # Always include INDEX summary
     index = _read(repo_root / "notes" / "INDEX.md", max_chars=1500)
     if index:
         notes.append(f"── notes/INDEX.md（概念速查）──\n{index}")
@@ -345,7 +412,7 @@ def _layer4_knowledge(repo_root: Path, recent_note_paths: list[str],
     return _section("【四】知識背景　（可截斷，損失補充資料）", body)
 
 
-# ── main builder ────────────────────────────────────────────────────────────
+# ── main builder ──────────────────────────────────────────────────────
 
 def build_newspaper(
     repo_root: Path,
