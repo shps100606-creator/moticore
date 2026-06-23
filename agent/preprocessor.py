@@ -102,6 +102,20 @@ def _load_horizon(repo_root: Path, max_chars: int = 800) -> str:
     return f"\n\n【HORIZON.md 開放問題】:\n{content}"
 
 
+def _fetch_url(url: str, max_chars: int = 3000) -> str:
+    """Fetch external URL content via GET. Only https:// allowed."""
+    try:
+        resp = _requests.get(
+            url,
+            timeout=15,
+            headers={"User-Agent": "moticore-agent/1.0"},
+        )
+        resp.raise_for_status()
+        return resp.text[:max_chars]
+    except Exception as e:
+        return f"（無法讀取 {url}：{e}）"
+
+
 def _fetch_analytics(token: str, project_id: str) -> str:
     """Fetch Vercel Analytics summary for the last 7 days."""
     if not token or not project_id:
@@ -134,23 +148,27 @@ def _fetch_analytics(token: str, project_id: str) -> str:
 
 
 def _load_requested_files(repo_root: Path,
-                          dialogues_token: str = "") -> tuple[list[str], list[str]]:
-    """Returns (note_paths, dialogue_filenames) from memory/read-requests.json."""
+                          dialogues_token: str = "") -> tuple[list[str], list[str], list[str]]:
+    """Returns (note_paths, dialogue_filenames, urls) from memory/read-requests.json."""
     req_path = repo_root / "memory" / "read-requests.json"
     if not req_path.exists():
-        return [], []
+        return [], [], []
     try:
         data = json.loads(req_path.read_text(encoding="utf-8"))
     except Exception:
-        return [], []
+        return [], [], []
 
     if isinstance(data, list):
-        return [p for p in data if isinstance(p, str)], []
+        return [p for p in data if isinstance(p, str)], [], []
     if isinstance(data, dict):
         notes = [p for p in data.get("notes", []) if isinstance(p, str)]
         dialogues = [f for f in data.get("dialogues", []) if isinstance(f, str)]
-        return notes, dialogues
-    return [], []
+        urls = [
+            u for u in data.get("urls", [])
+            if isinstance(u, str) and u.startswith("https://")
+        ]
+        return notes, dialogues, urls
+    return [], [], []
 
 
 def _fetch_dialogue(token: str, filename: str, max_chars: int = 3000) -> str:
@@ -381,11 +399,13 @@ def _layer3_synthesis(repo_root: Path) -> str:
 
 def _layer4_knowledge(repo_root: Path, recent_note_paths: list[str],
                       dialogues_token: str = "") -> str:
-    """Load relevant notes and any requested dialogue files."""
+    """Load relevant notes, requested dialogue files, and external URLs."""
     notes = []
     seen = set()
 
-    requested_notes, requested_dialogues = _load_requested_files(repo_root, dialogues_token)
+    requested_notes, requested_dialogues, requested_urls = _load_requested_files(
+        repo_root, dialogues_token
+    )
     all_note_paths = requested_notes + [p for p in recent_note_paths if p not in requested_notes]
 
     for rel_path in all_note_paths:
@@ -403,6 +423,10 @@ def _layer4_knowledge(repo_root: Path, recent_note_paths: list[str],
         for filename in requested_dialogues[:2]:
             content = _fetch_dialogue(dialogues_token, filename, max_chars=3000)
             notes.append(f"── 《{filename}》【原文參考】 ──\n{content}")
+
+    for url in requested_urls[:2]:
+        content = _fetch_url(url)
+        notes.append(f"── 外部 URL：{url} ──\n{content}")
 
     index = _read(repo_root / "notes" / "INDEX.md", max_chars=1500)
     if index:
