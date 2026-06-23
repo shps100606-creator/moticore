@@ -9,7 +9,7 @@
 1. 確認本文件的 **CVP 狀態** 區塊 → 確認當前版本與 VP 路徑
 2. 讀 `_docs/strategy/ROADMAP.md` → 確認目前版本狀態與下一步方向
 3. 讀 `OVERVIEW.md` → 掌握系統架構與現況
-4. 讀 `core/STATUS.md` → 確認任務收件匣與偏離記錄
+4. 讀 `core/STATUS.md` → 確認任務收件匚與偏離記錄
 5. 讀 `core/MOTIVE.md` → 確認代理身份與使命
 
 ---
@@ -20,8 +20,8 @@
 |------|------|
 | 當前版本 | v0.5.0 |
 | VP 路徑 | `_docs/versions/v0.5.0/VP.md`（main）|
-| WN 路徑 | `_docs/versions/v0.5.0/WN1.md`、`WN2.md`、`WN3.md`、`WN4.md`（執行中）|
-| 版本狀態 | execution — WN 已建立，待 Worker 執行 |
+| WN 路徑 | 無（v0.5.0 已封版，WN 已刪除）|
+| 版本狀態 | sealed — v0.5.0 完成，待開始 v0.6.0 |
 | 最後更新 | 2026-06-23 |
 
 ---
