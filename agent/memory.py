@@ -17,11 +17,13 @@ def get_recent_actions(repo_root: Path, n: int = 5) -> list[dict]:
             continue
         lines = block.strip().splitlines()
         entry = {"timestamp": "", "action_type": "", "summary": "",
-                 "result": "", "deviation_flag": "無", "files": [], "mode": ""}
+                 "result": "", "deviation_flag": "無", "files": [], "mode": "",
+                 "pole": "motivation"}
         for line in lines:
             if line.startswith("20"):           # timestamp is first line
                 entry["timestamp"] = line[:19]
-            for key in ("action_type", "summary", "result", "deviation_flag", "files", "mode"):
+            for key in ("action_type", "summary", "result", "deviation_flag",
+                        "files", "mode", "pole"):
                 prefix = f"- **{key}**:"
                 if line.startswith(prefix):
                     val = line[len(prefix):].strip()
@@ -41,7 +43,8 @@ def format_recent_for_report(repo_root: Path, n: int = 3) -> str:
     lines = []
     for e in entries:
         files_str = f" → {', '.join(e['files'])}" if e["files"] else ""
-        lines.append(f"  {{{e['timestamp']}}} [{e['action_type']}] {e['summary']}{files_str}")
+        pole_str = f" [{e.get('pole', '?')}]" if e.get('pole') else ""
+        lines.append(f"  {{{e['timestamp']}}} [{e['action_type']}]{pole_str} {e['summary']}{files_str}")
     return "\n".join(lines)
 
 
@@ -59,8 +62,37 @@ def get_recent_note_paths(repo_root: Path, n: int = 5) -> list[str]:
     return paths
 
 
-def append_action(repo_root: Path, decision: dict, mode: str = "", file_writes: list = None) -> None:
-    """Append a decision entry to the action log, including written file paths."""
+def _truncate_action_log_if_needed(log_path: Path, keep: int = 100,
+                                   archive_threshold: int = 200) -> None:
+    """If log exceeds archive_threshold entries, archive oldest to dated file."""
+    if not log_path.exists():
+        return
+    text = log_path.read_text(encoding="utf-8")
+    raw_blocks = text.strip().split("\n### ")
+    blocks = [b for b in raw_blocks if b.strip()]
+    if len(blocks) <= archive_threshold:
+        return
+
+    archive_count = len(blocks) - keep
+    to_archive = blocks[:archive_count]
+    to_keep = blocks[archive_count:]
+
+    archive_month = datetime.utcnow().strftime("%Y%m")
+    archive_path = log_path.parent / f"action-log-archive-{archive_month}.md"
+    header = f"# action-log 封存 {archive_month}\n（共 {archive_count} 筆）\n"
+    if archive_path.exists():
+        with archive_path.open("a", encoding="utf-8") as f:
+            f.write("\n### " + "\n### ".join(to_archive))
+    else:
+        archive_path.write_text(header + "\n### ".join(to_archive), encoding="utf-8")
+
+    log_path.write_text("\n### ".join(to_keep), encoding="utf-8")
+    print(f"[memory] action-log truncated: archived {archive_count}, kept {keep}")
+
+
+def append_action(repo_root: Path, decision: dict, mode: str = "",
+                  file_writes: list = None) -> None:
+    """Append a decision entry to the action log."""
     log_path = repo_root / ACTION_LOG
     log_path.parent.mkdir(exist_ok=True)
     ts = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -70,11 +102,13 @@ def append_action(repo_root: Path, decision: dict, mode: str = "", file_writes: 
         files = [fw.get("path", "") for fw in file_writes if fw.get("path")]
 
     files_str = ", ".join(files) if files else "（無）"
+    pole = decision.get("pole", "motivation")
 
     entry = (
         f"\n### {ts}\n"
         f"- **action_type**: {decision.get('action_type', 'unknown')}\n"
         f"- **mode**: {mode}\n"
+        f"- **pole**: {pole}\n"
         f"- **summary**: {decision.get('summary', '')}\n"
         f"- **files**: {files_str}\n"
         f"- **result**: {decision.get('result', '')}\n"
@@ -82,3 +116,5 @@ def append_action(repo_root: Path, decision: dict, mode: str = "", file_writes: 
     )
     with log_path.open("a", encoding="utf-8") as f:
         f.write(entry)
+
+    _truncate_action_log_if_needed(log_path)

@@ -23,9 +23,10 @@ from reader import get_next_chunk, save_cursor, load_cursor
 from preprocessor import detect_mode, build_newspaper
 
 QUESTION_LABEL = "[代理提問]"
+INSIGHT_LABEL = "[moti 洞見]"
 
 
-# ── action handlers ──────────────────────────────────────────────────────────
+# ── action handlers ────────────────────────────────────────────────
 
 def handle_issue_responses(parsed: dict, github_token: str) -> None:
     for r in parsed.get("issue_responses", []):
@@ -98,38 +99,35 @@ def handle_question(parsed: dict, open_issues: list, github_token: str,
     print("[run] Question issue opened")
 
 
-def handle_wp_post(parsed: dict) -> None:
-    """Post articles to WordPress via REST API. Converts Markdown to HTML."""
-    wp_user = os.environ.get("WP_USER", "")
-    wp_password = os.environ.get("WP_APP_PASSWORD", "")
-    wp_url = os.environ.get("WP_URL", "https://moticore.org")
-    if not wp_user or not wp_password:
+def handle_insight(parsed: dict, open_issues: list, github_token: str) -> None:
+    """Open a proactive insight Issue if §INSIGHT is present and none already open."""
+    insight = parsed.get("insight", {})
+    if not insight or not insight.get("title"):
         return
-    import markdown as md
+    already_open = any(
+        INSIGHT_LABEL in i.get("title", "")
+        for i in open_issues
+        if i.get("number") != PROGRESS_ISSUE
+    )
+    if already_open:
+        print("[run] Skipping insight — [moti 洞見] Issue already open")
+        return
+    from issues import OWNER, REPO
     import requests
-    from requests.auth import HTTPBasicAuth
-    auth = HTTPBasicAuth(wp_user, wp_password)
-    for post in parsed.get("wp_posts", []):
-        title = post.get("title", "").strip()
-        content = post.get("content", "").strip()
-        status = post.get("status", "draft")
-        if not title or not content:
-            continue
-        html_content = md.markdown(content, extensions=["extra", "nl2br"])
-        try:
-            resp = requests.post(
-                f"{wp_url}/wp-json/wp/v2/posts",
-                auth=auth,
-                json={"title": title, "content": html_content, "status": status},
-                timeout=15,
-            )
-            if resp.ok:
-                post_id = resp.json().get("id", "?")
-                print(f"[run] WP post created: #{post_id} '{title}' (status={status})")
-            else:
-                print(f"[run] WP post failed: {resp.status_code} {resp.text[:200]}")
-        except Exception as e:
-            print(f"[run] WP post error: {e}")
+    headers = {
+        "Authorization": f"Bearer {github_token}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+    title = insight["title"]
+    content = insight.get("content", "").strip()
+    body = f"{content}\n\n---\n_自動開立_" if content else "_自動開立_"
+    requests.post(
+        f"https://api.github.com/repos/{OWNER}/{REPO}/issues",
+        headers=headers,
+        json={"title": f"{INSIGHT_LABEL} {title[:60]}", "body": body},
+    ).raise_for_status()
+    print(f"[run] Insight issue opened: {title[:60]}")
 
 
 def post_progress_report(github_token: str, mode: str, reading_context: str,
@@ -141,7 +139,7 @@ def post_progress_report(github_token: str, mode: str, reading_context: str,
         off = cursor.get("char_offset", 0)
         progress = "全部讀完！" if finished else f"第 {idx}/29 篇 《{reading_context}》，至第 {off:,} 字"
     elif mode == "SYNTHESIS":
-        progress = "閱讀完毕，知識綜合中"
+        progress = "閱讀完畢，知識綜合中"
     else:
         progress = "（回應模式，無閱讀進度）"
     summary = action.get("summary", "").strip()[:100]
@@ -152,7 +150,7 @@ def post_progress_report(github_token: str, mode: str, reading_context: str,
     print(f"[run] Progress posted (Issue #{PROGRESS_ISSUE})")
 
 
-# ── retry wrapper ────────────────────────────────────────────────────────────
+# ── retry wrapper ────────────────────────────────────────────
 
 def call_with_retry(motive: str, newspaper: str, retries: int = 4) -> str:
     waits = [10, 20, 40, 60]
@@ -170,7 +168,7 @@ def call_with_retry(motive: str, newspaper: str, retries: int = 4) -> str:
     return ""
 
 
-# ── main ───────────────────────────────────────────────────────────────────
+# ── main ─────────────────────────────────────────────────
 
 def main():
     print(f"[run] moticore-agent started at {datetime.now(timezone.utc).isoformat()}Z")
@@ -252,7 +250,7 @@ def main():
 
     parsed = parse_remarks(raw_output)
     action = parsed.get("action", {})
-    print(f"[run] Action: {action.get('type')} — {action.get('summary')}")
+    print(f"[run] Action: {action.get('type')} (pole={action.get('pole', '?')}) — {action.get('summary')}")
 
     if parsed.get("truncated"):
         print(f"[run] ⚠️ Truncated sections: {parsed['truncated']}")
@@ -260,10 +258,10 @@ def main():
     if github_token:
         handle_issue_responses(parsed, github_token)
         handle_question(parsed, open_issues, github_token, reading_context)
+        handle_insight(parsed, open_issues, github_token)
 
     written = handle_file_writes(parsed, REPO_ROOT)
     handle_read_request(parsed, REPO_ROOT)
-    handle_wp_post(parsed)
 
     if new_cursor:
         save_cursor(REPO_ROOT, new_cursor)
