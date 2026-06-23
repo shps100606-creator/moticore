@@ -28,10 +28,17 @@ REMARKS_INSTRUCTIONS = """
 
 §ACTION
 type: reading（或 response / synthesis / introspection / no_action）
+pole: motivation（或 curiosity / crystallize / dissolve）
 summary: 一句話說明本次行動
 deviation: 無（或 輕微 / 顯著 / 嚴重）
 result: 完成（或 部分完成 / 擱置）
 §END_ACTION
+
+pole 欄位含義：
+- motivation：延續、確認、鞏固既有信念或承諾的行動（動機極）
+- curiosity：探索、提問、進入未知領域的行動（好奇極）
+- crystallize：將 HORIZON.md 的洞察寫入 MOTIVE.md（好奇→動機的結晶）
+- dissolve：將 MOTIVE.md 的既有信念重新開放為問題（動機→好奇的溶解）
 
 §ISSUE_RESPONSE issue={Issue 編號}
 （回應內容，引用自己讀過的筆記，具體有根據，可多行）
@@ -53,13 +60,10 @@ result: 完成（或 部分完成 / 擱置）
 （想問創造者的問題，留空則不開 Issue）
 §END_QUESTION
 
-§WP_POST
-title: 文章標題
-status: draft
----
-（繁體中文文章正文。有值得公開的動機論洞見、實驗觀察、或哲學反思時才使用。
-status 預設 draft，由創造者審核後發布。）
-§END_WP_POST
+§INSIGHT
+title: 洞見或問題的標題
+ content: 分享的洞見或發現，或 HORIZON.md 無法自行解答、値得請教創造者的問題
+§END_INSIGHT
 
 重要規則：
 1. §ACTION 必填，其餘按本次任務填寫
@@ -74,7 +78,7 @@ status 預設 draft，由創造者審核後發布。）
    - 不需請求已經在【四】中顯示的檔案
    - 不得請求超出下一次 heartbeat 可處理的量
 8. SYNTHESIS 模式每次心跳最多寫 2 個 §FILE（主文件 + docs/STATUS.md），避免截斷
-9. §WP_POST：有值得公開的洞見時才使用，status 預設 draft，不得擅自改為 publish
+9. §INSIGHT：有値得分享的洞見、或 HORIZON.md 有無法自行解答的問題時才使用。同時最多 1 個主動 Issue。
 """
 
 
@@ -103,7 +107,7 @@ def parse_remarks(text: str) -> dict:
         "file_writes": [],
         "read_request": {},
         "question": "",
-        "wp_posts": [],
+        "insight": {},
         "truncated": [],
     }
 
@@ -138,27 +142,19 @@ def parse_remarks(text: str) -> dict:
         elif kind == "QUESTION":
             result["question"] = content
 
-        elif kind == "WP_POST":
+        elif kind == "INSIGHT":
             lines = content.splitlines()
-            title = ""
-            status = "draft"
-            body_lines = []
-            in_body = False
+            title, body_lines, in_content = "", [], False
             for line in lines:
-                if not in_body and line.startswith("title:"):
+                if not in_content and line.startswith("title:"):
                     title = line.partition(":")[2].strip()
-                elif not in_body and line.startswith("status:"):
-                    status = line.partition(":")[2].strip()
-                elif not in_body and line == "---":
-                    in_body = True
-                elif in_body:
+                elif not in_content and line.startswith("content:"):
+                    body_lines.append(line.partition(":")[2].strip())
+                    in_content = True
+                elif in_content:
                     body_lines.append(line)
-            if title and body_lines:
-                result["wp_posts"].append({
-                    "title": title,
-                    "status": status,
-                    "content": "\n".join(body_lines),
-                })
+            if title:
+                result["insight"] = {"title": title, "content": "\n".join(body_lines).strip()}
 
     # Detect truncated sections
     for m in re.finditer(r"§([A-Z_]+)(?:[ \t][^\n]*)?\n", text):
