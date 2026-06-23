@@ -53,7 +53,7 @@ pole 欄位含義：
 §END_FILE
 
 §READ_REQUEST
-{"notes": ["notes/筆記檔名.md"], "dialogues": ["12-文章名.md"]}
+{"notes": ["notes/筆記檔名.md"], "dialogues": ["12-文章名.md"], "urls": ["https://example.com"]}
 §END_READ_REQUEST
 
 §QUESTION
@@ -75,6 +75,7 @@ title: 洞見或問題的標題
 7. §READ_REQUEST 格式說明：
    - notes: 請求載入 moticore repo 內的筆記檔案
    - dialogues: 請求載入 prima-materia 的原文檔案，每次最多 2 篇
+   - urls: 請求讀取外部網址內容（只允許 https://，最多 2 個，只讀純文字）
    - 不需請求已經在【四】中顯示的檔案
    - 不得請求超出下一次 heartbeat 可處理的量
 8. SYNTHESIS 模式每次心跳最多寫 2 個 §FILE（主文件 + docs/STATUS.md），避免截斷
