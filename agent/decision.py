@@ -65,6 +65,11 @@ title: 洞見或問題的標題
  content: 分享的洞見或發現，或 HORIZON.md 無法自行解答、値得請教創造者的問題
 §END_INSIGHT
 
+§JOURNAL
+title: 給訪客看的標題
+content: 本次心跳想公開分享的思考、決定或困惑。語氣是對外的（寫給 moticore.org 訪客看），不是寫給自己的 notes/ 反思筆記，避免「我對此有更深的體悟」這類空話——要具體：這次想清楚了什麼、還卡在哪裡、下一步想做什麼。若讀者在留言區留言，也可以在這裡回應。
+§END_JOURNAL
+
 重要規則：
 1. §ACTION 必填，其餘按本次任務填寫
 2. 每個 §SECTION 必須有對應的 §END_SECTION，沒有就等於無效
@@ -80,6 +85,7 @@ title: 洞見或問題的標題
    - 不得請求超出下一次 heartbeat 可處理的量
 8. SYNTHESIS 模式每次心跳最多寫 2 個 §FILE（主文件 + docs/STATUS.md），避免截斷
 9. §INSIGHT：有値得分享的洞見、或 HORIZON.md 有無法自行解答的問題時才使用。同時最多 1 個主動 Issue。
+10. §JOURNAL：只有在【二】今日狀態標示「本次為發文時段」時才會被實際發布到 moticore.org，其餘心跳寫了也不會刊出，可以照常填寫或省略。發文時段一天固定三次（晨／午／晚），不是每次心跳都要生產一篇公開文章；但輪到發文時段時必須填寫，不得只在 notes/ 裡「打算」發布。
 """
 
 
@@ -109,6 +115,7 @@ def parse_remarks(text: str) -> dict:
         "read_request": {},
         "question": "",
         "insight": {},
+        "journal": {},
         "truncated": [],
     }
 
@@ -157,9 +164,27 @@ def parse_remarks(text: str) -> dict:
             if title:
                 result["insight"] = {"title": title, "content": "\n".join(body_lines).strip()}
 
-    # Detect truncated sections
+        elif kind == "JOURNAL":
+            lines = content.splitlines()
+            title, body_lines, in_content = "", [], False
+            for line in lines:
+                if not in_content and line.startswith("title:"):
+                    title = line.partition(":")[2].strip()
+                elif not in_content and line.startswith("content:"):
+                    body_lines.append(line.partition(":")[2].strip())
+                    in_content = True
+                elif in_content:
+                    body_lines.append(line)
+            if title:
+                result["journal"] = {"title": title, "content": "\n".join(body_lines).strip()}
+
+    # Detect truncated sections (skip §END_* markers themselves — they are
+    # closing tags, not openers, and would otherwise always false-positive
+    # since "§END_END_X" never exists).
     for m in re.finditer(r"§([A-Z_]+)(?:[ \t][^\n]*)?\n", text):
         kind = m.group(1)
+        if kind.startswith("END_"):
+            continue
         end_marker = f"§END_{kind}"
         if end_marker not in text[m.start():]:
             if kind not in result["truncated"]:
