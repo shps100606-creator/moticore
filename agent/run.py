@@ -37,6 +37,8 @@ JOURNAL_WINDOWS = [
 JOURNAL_WINDOW_LABELS = {"morning": "晨間", "noon": "午間", "evening": "晚間"}
 TAIPEI_TZ = ZoneInfo("Asia/Taipei")
 
+HORIZON_PATH = "core/HORIZON.md"
+
 
 # ── action handlers ────────────────────────────────────────────────
 
@@ -67,6 +69,27 @@ def handle_file_writes(parsed: dict, repo_root: Path) -> list[dict]:
         print(f"[run] Written: {path_str}")
         written.append(fw)
     return written
+
+
+def check_horizon_lifecycle(action: dict, written: list[dict]) -> None:
+    """crystallize/dissolve are self-reported poles that are only meaningful
+    if core/HORIZON.md was actually edited to move/add the corresponding
+    question. We can't fabricate that content (unlike the journal fallback),
+    so instead we make the gap visible: if the pole is claimed without a
+    matching HORIZON.md write, flag it in the action's own deviation field so
+    the next heartbeat's "最近行動" shows the discrepancy instead of it
+    silently passing as a clean 完成."""
+    pole = action.get("pole", "")
+    if pole not in ("crystallize", "dissolve"):
+        return
+    horizon_touched = any(fw.get("path") == HORIZON_PATH for fw in written)
+    if horizon_touched:
+        return
+    label = "crystallize" if pole == "crystallize" else "dissolve"
+    note = f"顯著（宣稱 {label} 但未寫 §FILE {HORIZON_PATH}，問題未真正搬動/新增）"
+    existing = action.get("deviation", "").strip()
+    action["deviation"] = f"{existing}；{note}" if existing and existing != "無" else note
+    print(f"[run] ⚠️ pole={label} claimed without a {HORIZON_PATH} write")
 
 
 def _current_journal_window(now_utc: datetime) -> str | None:
@@ -363,6 +386,7 @@ def main():
     journal_write = handle_journal(parsed, REPO_ROOT, action, journal_window, journal_already_posted)
     if journal_write:
         written.append(journal_write)
+    check_horizon_lifecycle(action, written)
     handle_read_request(parsed, REPO_ROOT)
 
     if new_cursor:
