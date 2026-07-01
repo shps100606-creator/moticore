@@ -44,7 +44,9 @@ def format_recent_for_report(repo_root: Path, n: int = 3) -> str:
     for e in entries:
         files_str = f" → {', '.join(e['files'])}" if e["files"] else ""
         pole_str = f" [{e.get('pole', '?')}]" if e.get('pole') else ""
-        lines.append(f"  {{{e['timestamp']}}} [{e['action_type']}]{pole_str} {e['summary']}{files_str}")
+        dev = e.get('deviation_flag', '無')
+        dev_str = f" ⚠️{dev}" if dev and dev != "無" else ""
+        lines.append(f"  {{{e['timestamp']}}} [{e['action_type']}]{pole_str} {e['summary']}{files_str}{dev_str}")
     return "\n".join(lines)
 
 
@@ -104,15 +106,19 @@ def append_action(repo_root: Path, decision: dict, mode: str = "",
     files_str = ", ".join(files) if files else "（無）"
     pole = decision.get("pole", "motivation")
 
+    # `decision` comes straight from decision.py's §ACTION parser, whose keys
+    # are the field names the model actually writes: "type" and "deviation"
+    # (not "action_type" / "deviation_flag" — those are only the log's
+    # on-disk field labels below).
     entry = (
         f"\n### {ts}\n"
-        f"- **action_type**: {decision.get('action_type', 'unknown')}\n"
+        f"- **action_type**: {decision.get('type', 'unknown')}\n"
         f"- **mode**: {mode}\n"
         f"- **pole**: {pole}\n"
         f"- **summary**: {decision.get('summary', '')}\n"
         f"- **files**: {files_str}\n"
         f"- **result**: {decision.get('result', '')}\n"
-        f"- **deviation_flag**: {decision.get('deviation_flag', '無')}\n"
+        f"- **deviation_flag**: {decision.get('deviation', '無')}\n"
     )
     with log_path.open("a", encoding="utf-8") as f:
         f.write(entry)
