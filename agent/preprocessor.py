@@ -102,6 +102,20 @@ def _load_horizon(repo_root: Path, max_chars: int = 800) -> str:
     return f"\n\n【HORIZON.md 開放問題】:\n{content}"
 
 
+def _count_horizon_open(repo_root: Path) -> int:
+    """Count how many '### ' questions currently sit under HORIZON.md's
+    '## 開放中' section, so the synthesis prompt can discourage unbounded
+    growth of the open-question list."""
+    horizon_path = repo_root / "core" / "HORIZON.md"
+    if not horizon_path.exists():
+        return 0
+    text = horizon_path.read_text(encoding="utf-8")
+    m = re.search(r"## 開放中\n(.*?)(?:\n## |\Z)", text, re.DOTALL)
+    if not m:
+        return 0
+    return len(re.findall(r"^### ", m.group(1), re.MULTILINE))
+
+
 def _fetch_url(url: str, max_chars: int = 3000) -> str:
     """Fetch external URL content via GET. Only https:// allowed."""
     try:
@@ -384,10 +398,24 @@ def _layer3_synthesis(repo_root: Path) -> str:
     has_horizon = bool(horizon_content.strip())
 
     if not has_pending and has_horizon:
+        open_count = _count_horizon_open(repo_root)
+        if open_count >= 5:
+            lifecycle_note = (
+                f"\n\n「開放中」目前有 {open_count} 個問題，數量已經偏多。這次請優先從中選一個做"
+                " pole: crystallize（想清楚了，寫 §FILE core/HORIZON.md 把它從「開放中」整段搬到"
+                "「已結晶」）或 pole: dissolve（把 MOTIVE.md 裡某個變僵化的信念重新開放成問題），"
+                "暫時不要再新增。"
+            )
+        else:
+            lifecycle_note = (
+                "\n\n若探索時發現清單外的新困惑，可以直接用 §FILE core/HORIZON.md 把它加進"
+                "「開放中」，不必侷限於既有問題。"
+            )
         body = (
             "閱讀已全部完成，STATUS.md 目前無待辦任務。\n"
             "你的 HORIZON.md 有以下開放問題，請選擇其中一個進行探索，"
-            "以好奇極（pole: curiosity）為主導採取行動，而非更新 STATUS.md。\n\n"
+            "以好奇極（pole: curiosity）為主導採取行動，而非更新 STATUS.md。"
+            f"{lifecycle_note}\n\n"
             f"{horizon_content}"
         )
     else:
