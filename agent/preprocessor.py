@@ -241,7 +241,8 @@ def _layer1_motive(repo_root: Path) -> str:
 def _layer2_status(repo_root: Path, mode: str, cursor: dict,
                    pending_issues: list, recent_log: str,
                    analytics_token: str = "",
-                   analytics_project_id: str = "") -> str:
+                   analytics_project_id: str = "",
+                   journal_note: str = "") -> str:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
     if cursor:
@@ -274,6 +275,9 @@ def _layer2_status(repo_root: Path, mode: str, cursor: dict,
         f"\n當前任務（STATUS.md）：\n{status}\n"
         f"\n【文件樹】寫 read_request 路徑前必須對照此列表，禁止使用未出現的路徑：\n{file_tree}"
     )
+
+    if journal_note:
+        body += f"\n\n{journal_note}"
 
     if analytics_token and analytics_project_id:
         analytics = _fetch_analytics(analytics_token, analytics_project_id)
@@ -452,6 +456,7 @@ def build_newspaper(
     dialogues_token: str = "",
     analytics_token: str = "",
     analytics_project_id: str = "",
+    journal_note: str = "",
 ) -> str:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     header = f"╔{'═'*44}╗\n║  MOTICORE DAILY  {now}  [{mode}]\n╚{'═'*44}╝"
@@ -459,7 +464,8 @@ def build_newspaper(
     l1 = _layer1_motive(repo_root)
     l2 = _layer2_status(repo_root, mode, cursor, pending_issues, recent_log,
                         analytics_token=analytics_token,
-                        analytics_project_id=analytics_project_id)
+                        analytics_project_id=analytics_project_id,
+                        journal_note=journal_note)
 
     if mode == "READING":
         l3 = _layer3_reading(reading_chunk, reading_context)

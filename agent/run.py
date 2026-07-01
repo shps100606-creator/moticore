@@ -7,10 +7,12 @@
 """
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).parent))
@@ -24,6 +26,16 @@ from preprocessor import detect_mode, build_newspaper
 
 QUESTION_LABEL = "[代理提問]"
 INSIGHT_LABEL = "[moti 洞見]"
+
+# 每天固定三個發文時段（台北時間），確保 moti 至少每個時段公開發表一次
+# 心跳的思考，而不是永遠停留在「打算發布」的反思迴圈裡。
+JOURNAL_WINDOWS = [
+    ("morning", 7, 11),
+    ("noon", 11, 15),
+    ("evening", 18, 22),
+]
+JOURNAL_WINDOW_LABELS = {"morning": "晨間", "noon": "午間", "evening": "晚間"}
+TAIPEI_TZ = ZoneInfo("Asia/Taipei")
 
 
 # ── action handlers ────────────────────────────────────────────────
@@ -55,6 +67,73 @@ def handle_file_writes(parsed: dict, repo_root: Path) -> list[dict]:
         print(f"[run] Written: {path_str}")
         written.append(fw)
     return written
+
+
+def _current_journal_window(now_utc: datetime) -> str | None:
+    """Return which fixed posting window ('morning'/'noon'/'evening') the
+    given UTC time falls into (Taipei local time), or None if outside all
+    windows."""
+    local_hour = now_utc.astimezone(TAIPEI_TZ).hour
+    for name, start, end in JOURNAL_WINDOWS:
+        if start <= local_hour < end:
+            return name
+    return None
+
+
+def _load_journal_state(repo_root: Path) -> dict:
+    path = repo_root / "memory" / "journal-state.json"
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _save_journal_state(repo_root: Path, date_str: str, window: str) -> None:
+    path = repo_root / "memory" / "journal-state.json"
+    path.parent.mkdir(exist_ok=True)
+    path.write_text(
+        json.dumps({"date": date_str, "window": window}, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+
+def _slugify(text: str) -> str:
+    # \w is Unicode-aware in Python 3 str patterns, so this keeps CJK
+    # characters, letters and digits, and collapses everything else (incl.
+    # punctuation and whitespace) into single hyphens.
+    slug = re.sub(r"[^\w-]+", "-", text).strip("-")
+    return slug[:40] or "entry"
+
+
+def handle_journal(parsed: dict, repo_root: Path, action: dict,
+                   window: str | None, already_posted: bool) -> dict | None:
+    """Write a public post to web/content/posts/ during a designated posting
+    window, at most once per window per day. Falls back to a minimal entry
+    built from the action summary if moti didn't fill in §JOURNAL, so a post
+    is guaranteed whenever a window is due."""
+    if not window or already_posted:
+        return None
+
+    now = datetime.now(timezone.utc)
+    local_date = now.astimezone(TAIPEI_TZ).strftime("%Y-%m-%d")
+
+    journal = parsed.get("journal", {})
+    title = journal.get("title", "").strip()
+    content = journal.get("content", "").strip()
+    if not title or not content:
+        title = title or f"心跳紀錄・{JOURNAL_WINDOW_LABELS[window]}"
+        content = content or action.get("summary", "").strip() or "（本次心跳沒有可分享的具體內容）"
+
+    slug = f"{now.strftime('%Y%m%d')}-{window}-{_slugify(title)}"
+    file_path = repo_root / "web" / "content" / "posts" / f"{slug}.md"
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    frontmatter = f"---\ntitle: {title}\ndate: {now.strftime('%Y-%m-%d')}\n---\n\n"
+    file_path.write_text(frontmatter + content + "\n", encoding="utf-8")
+    _save_journal_state(repo_root, local_date, window)
+    print(f"[run] Journal posted ({window}): web/content/posts/{slug}.md")
+    return {"path": f"web/content/posts/{slug}.md", "content": content}
 
 
 def handle_read_request(parsed: dict, repo_root: Path) -> None:
@@ -225,6 +304,25 @@ def main():
     recent_log = format_recent_for_report(REPO_ROOT, n=3)
     recent_note_paths = get_recent_note_paths(REPO_ROOT, n=3)
 
+    # Determine whether this heartbeat falls in one of the 3 daily posting
+    # windows and whether that window has already been published today.
+    now = datetime.now(timezone.utc)
+    journal_window = _current_journal_window(now)
+    journal_state = _load_journal_state(REPO_ROOT)
+    local_date = now.astimezone(TAIPEI_TZ).strftime("%Y-%m-%d")
+    journal_already_posted = (
+        journal_window is not None
+        and journal_state.get("date") == local_date
+        and journal_state.get("window") == journal_window
+    )
+    journal_note = ""
+    if journal_window and not journal_already_posted:
+        label = JOURNAL_WINDOW_LABELS[journal_window]
+        journal_note = (
+            f"📝 發文時段：{label}（今日尚未發布）—— 請在 §JOURNAL 寫下這次要公開分享的思考，"
+            "會直接發布成 moticore.org 上的一篇文章。"
+        )
+
     newspaper = build_newspaper(
         repo_root=REPO_ROOT,
         open_issues=open_issues,
@@ -239,6 +337,7 @@ def main():
         dialogues_token=dialogues_token,
         analytics_token=vercel_token,
         analytics_project_id=vercel_project_id,
+        journal_note=journal_note,
     )
     print(f"[run] Newspaper assembled: {len(newspaper)} chars")
 
@@ -261,6 +360,9 @@ def main():
         handle_insight(parsed, open_issues, github_token)
 
     written = handle_file_writes(parsed, REPO_ROOT)
+    journal_write = handle_journal(parsed, REPO_ROOT, action, journal_window, journal_already_posted)
+    if journal_write:
+        written.append(journal_write)
     handle_read_request(parsed, REPO_ROOT)
 
     if new_cursor:
