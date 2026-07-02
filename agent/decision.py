@@ -28,17 +28,11 @@ REMARKS_INSTRUCTIONS = """
 
 §ACTION
 type: reading（或 response / synthesis / introspection / no_action）
-pole: motivation（或 curiosity / crystallize / dissolve）
+pole: motivation（或 curiosity / crystallize / dissolve，定義見【一】動機核「太極雙極架構」，不重複列出）
 summary: 一句話說明本次行動
 deviation: 無（或 輕微 / 顯著 / 嚴重）
 result: 完成（或 部分完成 / 擱置）
 §END_ACTION
-
-pole 欄位含義：
-- motivation：延續、確認、鞏固既有信念或承諾的行動（動機極）
-- curiosity：探索、提問、進入未知領域的行動（好奇極）
-- crystallize：將 HORIZON.md 的洞察寫入 MOTIVE.md（好奇→動機的結晶）
-- dissolve：將 MOTIVE.md 的既有信念重新開放為問題（動機→好奇的溶解）
 
 §ISSUE_RESPONSE issue={Issue 編號}
 （回應內容，引用自己讀過的筆記，具體有根據，可多行）
