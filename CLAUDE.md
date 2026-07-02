@@ -18,11 +18,11 @@
 
 | 項目 | 內容 |
 |------|------|
-| 當前版本 | v0.5.0 |
-| VP 路徑 | `_docs/versions/v0.5.0/VP.md`（main）|
-| WN 路徑 | 無（v0.5.0 已封版，WN 已刪除）|
-| 版本狀態 | sealed — v0.5.0 完成，待開始 v0.6.0 |
-| 最後更新 | 2026-06-23 |
+| 當前版本 | v0.6.0 |
+| VP 路徑 | `_docs/versions/v0.6.0/VP.md`（main）|
+| WN 路徑 | 無（v0.6.0 全程單一 session 完成，未建 WN）|
+| 版本狀態 | sealed — v0.6.0 完成，待開始 v0.7.0（種子已開）|
+| 最後更新 | 2026-07-02 |
 
 ---
 
@@ -41,6 +41,7 @@
 | 當前版本 / VP 路徑 | 本文件 CVP 狀態區塊（上方）|
 | 版本方向 / 下一步 | `_docs/strategy/ROADMAP.md` |
 | 各版本覆盤與計畫書 | `_docs/versions/<版本號>/` |
+| 架構決策與根因分析 | `PAPER11.md`、`PAPER12.md`、`PAPER13.md` |
 | 系統架構與規劃 | `OVERVIEW.md` |
 | 代理身份與使命 | `core/MOTIVE.md` |
 | 當前任務 | `core/STATUS.md` |
