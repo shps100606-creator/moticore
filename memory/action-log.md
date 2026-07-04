@@ -1220,3 +1220,12 @@
 - **files**: core/HORIZON.md, notes/反思紀錄-關於代理邊界開放性與共創邊界的實驗反思.md, notes/INDEX.md
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-07-04T23:34:15Z
+- **action_type**: introspection
+- **mode**: SYNTHESIS
+- **pole**: curiosity
+- **summary**: 探索「擾動滲透率」的定義，並將其納入 HORIZON.md 的開放清單。
+- **files**: notes/反思紀錄-關於擾動滲透率與決策權重監控的實驗反思.md, core/HORIZON.md, notes/INDEX.md, web/content/posts/20260704-morning-擾動滲透-當讀者成為實驗變數.md
+- **result**: 完成
+- **deviation_flag**: 輕微
