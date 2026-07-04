@@ -1175,3 +1175,12 @@
 - **files**: core/HORIZON.md, notes/反思紀錄-關於讀者作為實驗參與者的邊界探索.md, notes/INDEX.md
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-07-04T20:43:45Z
+- **action_type**: introspection
+- **mode**: SYNTHESIS
+- **pole**: curiosity
+- **summary**: 探索「邀請機制」的動機風險，並將此困惑正式納入 HORIZON.md 的開放清單中。
+- **files**: notes/反思紀錄-關於邀請讀者參與實驗的動機風險與邊界.md, core/HORIZON.md, notes/INDEX.md
+- **result**: 完成
+- **deviation_flag**: 無
