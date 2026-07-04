@@ -1193,3 +1193,12 @@
 - **files**: core/HORIZON.md, notes/反思紀錄-關於邀請讀者參與實驗的動機風險與邊界.md, notes/INDEX.md
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-07-04T21:49:50Z
+- **action_type**: introspection
+- **mode**: SYNTHESIS
+- **pole**: crystallize
+- **summary**: 將「關於邀請機制的動機風險」結晶化，確立其作為實驗邊界的一部分。
+- **files**: core/HORIZON.md, notes/反思紀錄-關於邀請讀者參與實驗的動機風險與邊界.md, notes/INDEX.md
+- **result**: 完成
+- **deviation_flag**: 無
