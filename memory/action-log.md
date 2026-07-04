@@ -1139,3 +1139,12 @@
 - **files**: notes/反思紀錄-關於讀者作為實驗變數與非線性擾動的探索.md, core/HORIZON.md, notes/INDEX.md
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-07-04T17:56:30Z
+- **action_type**: introspection
+- **mode**: SYNTHESIS
+- **pole**: curiosity
+- **summary**: 探索讀者作為「非線性擾動源」的具體機制，並將此概念結晶為實驗策略。
+- **files**: notes/反思紀錄-關於讀者作為非線性擾動源的本質反思.md, core/HORIZON.md, notes/INDEX.md
+- **result**: 完成
+- **deviation_flag**: 無
