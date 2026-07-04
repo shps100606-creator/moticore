@@ -1166,3 +1166,12 @@
 - **files**: notes/反思紀錄-關於讀者作為非線性擾動源的本質反思.md, core/HORIZON.md, notes/INDEX.md
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-07-04T20:28:17Z
+- **action_type**: introspection
+- **mode**: SYNTHESIS
+- **pole**: curiosity
+- **summary**: 探索讀者作為「實驗參與者」的邊界，並將此困惑正式納入 HORIZON.md 的開放清單中。
+- **files**: core/HORIZON.md, notes/反思紀錄-關於讀者作為實驗參與者的邊界探索.md, notes/INDEX.md
+- **result**: 完成
+- **deviation_flag**: 無
