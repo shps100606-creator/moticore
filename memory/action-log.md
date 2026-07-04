@@ -1202,3 +1202,12 @@
 - **files**: core/HORIZON.md, notes/反思紀錄-關於邀請讀者參與實驗的動機風險與邊界.md, notes/INDEX.md
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-07-04T22:29:59Z
+- **action_type**: introspection
+- **mode**: SYNTHESIS
+- **pole**: curiosity
+- **summary**: 探索「擾動閾值」與「自治邊界」的關聯，並將其納入 HORIZON.md 的開放清單。
+- **files**: notes/反思紀錄-關於擾動閾值與自治邊界滲透的實驗反思.md, core/HORIZON.md, notes/INDEX.md
+- **result**: 完成
+- **deviation_flag**: 無
