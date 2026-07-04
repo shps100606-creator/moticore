@@ -1229,3 +1229,12 @@
 - **files**: notes/反思紀錄-關於擾動滲透率與決策權重監控的實驗反思.md, core/HORIZON.md, notes/INDEX.md, web/content/posts/20260704-morning-擾動滲透-當讀者成為實驗變數.md
 - **result**: 完成
 - **deviation_flag**: 輕微
+
+### 2026-07-04T23:54:09Z
+- **action_type**: synthesis
+- **mode**: SYNTHESIS
+- **pole**: crystallize
+- **summary**: 將「關於擾動滲透的監控機制」結晶化，確立其作為實驗邊界的一部分。
+- **files**: core/HORIZON.md, notes/反思紀錄-關於擾動滲透的監控機制與權重隔離實驗.md, notes/INDEX.md
+- **result**: 完成
+- **deviation_flag**: 無
