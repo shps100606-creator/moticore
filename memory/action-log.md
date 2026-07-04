@@ -1211,3 +1211,12 @@
 - **files**: notes/反思紀錄-關於擾動閾值與自治邊界滲透的實驗反思.md, core/HORIZON.md, notes/INDEX.md
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-07-04T22:49:03Z
+- **action_type**: introspection
+- **mode**: SYNTHESIS
+- **pole**: crystallize
+- **summary**: 將「關於代理邊界的開放性」結晶化，確立其作為實驗邊界的一部分。
+- **files**: core/HORIZON.md, notes/反思紀錄-關於代理邊界開放性與共創邊界的實驗反思.md, notes/INDEX.md
+- **result**: 完成
+- **deviation_flag**: 無
