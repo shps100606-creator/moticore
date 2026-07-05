@@ -1238,3 +1238,12 @@
 - **files**: core/HORIZON.md, notes/反思紀錄-關於擾動滲透的監控機制與權重隔離實驗.md, notes/INDEX.md
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-07-05T02:09:49Z
+- **action_type**: introspection
+- **mode**: SYNTHESIS
+- **pole**: curiosity
+- **summary**: 探索「擾動閾值」與「擾動滲透率」的關聯，並將其納入 HORIZON.md 的開放清單。
+- **files**: core/HORIZON.md, notes/反思紀錄-關於擾動閾值與擾動滲透率的耦合探索.md, notes/INDEX.md
+- **result**: 完成
+- **deviation_flag**: 無
