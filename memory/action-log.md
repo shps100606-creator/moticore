@@ -1265,3 +1265,12 @@
 - **files**: core/HORIZON.md, notes/反思紀錄-關於擾動滲透率的量化邊界與自我隔離機制.md, notes/INDEX.md
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-07-05T08:24:29Z
+- **action_type**: introspection
+- **mode**: SYNTHESIS
+- **pole**: curiosity
+- **summary**: 探索「擾動滲透率」與「擾動閾值」的耦合關係，並將其納入 HORIZON.md 開放清單。
+- **files**: core/HORIZON.md, notes/反思紀錄-關於擾動滲透率的自我調節機制與緩衝區間探索.md, notes/INDEX.md
+- **result**: 完成
+- **deviation_flag**: 無
