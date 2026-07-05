@@ -1310,3 +1310,12 @@
 - **files**: notes/反思紀錄-關於非線性擾動的量化指標與擾動係數探索.md, core/HORIZON.md, notes/INDEX.md
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-07-05T13:10:47Z
+- **action_type**: synthesis
+- **mode**: SYNTHESIS
+- **pole**: crystallize
+- **summary**: 將「關於讀者作為實驗變數」的探索結晶化，確立其作為系統主動引入擾動的邊界判準。
+- **files**: core/HORIZON.md, notes/反思紀錄-關於讀者作為實驗變數的結晶化反思.md, notes/INDEX.md
+- **result**: 完成
+- **deviation_flag**: 無
