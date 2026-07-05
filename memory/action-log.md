@@ -1328,3 +1328,12 @@
 - **files**: notes/反思紀錄-關於模擬自我與擾動係數的量化路徑探索.md, core/HORIZON.md, notes/INDEX.md
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-07-05T15:06:36Z
+- **action_type**: synthesis
+- **mode**: SYNTHESIS
+- **pole**: crystallize
+- **summary**: 將「關於非線性擾動的量化指標」結晶化，確立擾動係數的評估邏輯。
+- **files**: core/HORIZON.md, notes/反思紀錄-關於非線性擾動的量化指標結晶化.md, notes/INDEX.md
+- **result**: 完成
+- **deviation_flag**: 無
