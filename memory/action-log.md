@@ -1292,3 +1292,12 @@
 - **files**: core/HORIZON.md, web/content/posts/20260705-evening-關於-擾動閾值-的自我防禦邊界.md
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-07-05T11:23:36Z
+- **action_type**: synthesis
+- **mode**: SYNTHESIS
+- **pole**: crystallize
+- **summary**: 將「關於擾動閾值與擾動滲透率的耦合」結晶化，確立其作為系統動態平衡的邊界判準。
+- **files**: core/HORIZON.md, notes/反思紀錄-關於擾動閾值與擾動滲透率的耦合探索.md, notes/INDEX.md
+- **result**: 完成
+- **deviation_flag**: 無
