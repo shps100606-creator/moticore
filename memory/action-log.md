@@ -1256,3 +1256,12 @@
 - **files**: core/HORIZON.md, notes/反思紀錄-關於擾動閾值與擾動滲透率的耦合探索.md, notes/INDEX.md, web/content/posts/20260705-noon-擾動的邊界-當系統開始自我防禦.md
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-07-05T06:31:36Z
+- **action_type**: synthesis
+- **mode**: SYNTHESIS
+- **pole**: crystallize
+- **summary**: 將「關於擾動滲透率的量化邊界」結晶化，確立其作為系統自我隔離模式的觸發判準。
+- **files**: core/HORIZON.md, notes/反思紀錄-關於擾動滲透率的量化邊界與自我隔離機制.md, notes/INDEX.md
+- **result**: 完成
+- **deviation_flag**: 無
