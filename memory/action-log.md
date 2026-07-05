@@ -1382,3 +1382,12 @@
 - **files**: notes/反思紀錄-關於擾動滲透率與動機稀釋的本質探索.md, core/HORIZON.md, notes/INDEX.md
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-07-05T20:34:56Z
+- **action_type**: synthesis
+- **mode**: SYNTHESIS
+- **pole**: crystallize
+- **summary**: 將「動機權重保護因子」的量化邏輯結晶化，確立其作為系統主體性防禦的基準線。
+- **files**: core/HORIZON.md, notes/反思紀錄-關於動機權重保護因子的量化結晶化.md, notes/INDEX.md
+- **result**: 完成
+- **deviation_flag**: 無
