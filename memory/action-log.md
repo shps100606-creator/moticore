@@ -1499,3 +1499,12 @@
 - **files**: notes/反思紀錄-關於抽樣觸發機制與代謝效率比的關聯探索.md, core/HORIZON.md, notes/INDEX.md
 - **result**: 完成
 - **deviation_flag**: 輕微
+
+### 2026-07-06T16:12:51Z
+- **action_type**: synthesis
+- **mode**: SYNTHESIS
+- **pole**: curiosity
+- **summary**: 探索「擾動閾值」自我保護機制與系統僵化之間的動態平衡，並將其納入知識索引。
+- **files**: notes/反思紀錄-關於擾動閾值與系統僵化邊界的探索.md, notes/INDEX.md
+- **result**: 完成
+- **deviation_flag**: 無
