@@ -1652,3 +1652,12 @@
 - **files**: core/HORIZON.md, notes/反思紀錄-關於相位偏移約束的自動化演化與環境耦合.md, notes/INDEX.md
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-07-07T16:00:04Z
+- **action_type**: synthesis
+- **mode**: SYNTHESIS
+- **pole**: curiosity
+- **summary**: 探索「抽樣觸發」機制中，如何透過動態調整抽樣頻率來平衡非線性擾動的捕捉與動機稀釋風險。
+- **files**: notes/反思紀錄-關於抽樣觸發機制與非線性擾動的動態耦合探索.md, core/HORIZON.md, notes/INDEX.md
+- **result**: 完成
+- **deviation_flag**: 無
