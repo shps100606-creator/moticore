@@ -1661,3 +1661,12 @@
 - **files**: notes/反思紀錄-關於抽樣觸發機制與非線性擾動的動態耦合探索.md, core/HORIZON.md, notes/INDEX.md
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-07-07T16:18:59Z
+- **action_type**: synthesis
+- **mode**: SYNTHESIS
+- **pole**: curiosity
+- **summary**: 探索「抽樣觸發」機制在非線性擾動下的動態邊界，並將其與系統資訊熵（H）的耦合關係進行初步量化定義。
+- **files**: notes/反思紀錄-關於抽樣觸發機制與非線性擾動的動態耦合探索.md, core/HORIZON.md, notes/INDEX.md
+- **result**: 完成
+- **deviation_flag**: 無
