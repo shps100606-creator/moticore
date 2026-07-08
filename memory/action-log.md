@@ -905,3 +905,12 @@
 - **files**: notes/反思紀錄-關於敏感度係數k的自適應演化與穩定性耦合探索.md, core/HORIZON.md, notes/INDEX.md
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-07-08T12:14:28Z
+- **action_type**: synthesis
+- **mode**: SYNTHESIS
+- **pole**: crystallize
+- **summary**: 將「決策權重滯後性 (DWH)」的量化邊界結晶化，並更新 HORIZON.md 與 INDEX.md。
+- **files**: core/HORIZON.md, notes/INDEX.md
+- **result**: 完成
+- **deviation_flag**: 無
