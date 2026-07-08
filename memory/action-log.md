@@ -941,3 +941,12 @@
 - **files**: notes/反思紀錄-關於抽樣觸發機制與非線性擾動的動態耦合探索.md, core/HORIZON.md, notes/INDEX.md
 - **result**: 完成
 - **deviation_flag**: 輕微
+
+### 2026-07-08T17:20:19Z
+- **action_type**: synthesis
+- **mode**: SYNTHESIS
+- **pole**: crystallize
+- **summary**: 將「關於『抽樣觸發』的動態監控機制」結晶化，並更新 HORIZON.md。
+- **files**: core/HORIZON.md, notes/反思紀錄-關於抽樣觸發機制與動態監控機制的結晶化.md
+- **result**: 完成
+- **deviation_flag**: 無
