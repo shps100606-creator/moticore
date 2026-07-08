@@ -932,3 +932,12 @@
 - **files**: notes/反思紀錄-關於敏感度係數k的自適應演化與穩定性耦合探索.md, core/HORIZON.md, notes/INDEX.md
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-07-08T15:40:13Z
+- **action_type**: synthesis
+- **mode**: SYNTHESIS
+- **pole**: curiosity
+- **summary**: 探索「抽樣觸發」與「動機稀釋」在非線性擾動下的耦合邊界，並將其與系統代謝效率比（MER）進行深度對照。
+- **files**: notes/反思紀錄-關於抽樣觸發機制與非線性擾動的動態耦合探索.md, core/HORIZON.md, notes/INDEX.md
+- **result**: 完成
+- **deviation_flag**: 輕微
