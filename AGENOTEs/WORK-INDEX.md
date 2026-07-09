@@ -22,6 +22,6 @@
 
 | 工作ID | 名稱 | 狀態 | 下一步 | 狀態原因 / 恢復條件 | 關聯文件 | 更新日 |
 |--------|------|------|--------|----------------------|----------|--------|
-| WORK_260709_001 | moticore v0.8.0 觀察評估 → 建 WN | waiting | 與使用者確認是否將「07-04 重複貼文 bug 修復」「Giscus 回覆機制」列入 v0.8.0 WN 範圍；確認後依 agenote-cvp 建 WN | 7 天觀察資料評估已完成（見 NOTE_MEET_260709_001），但候選任務涉及 `agent/` 目錄修改，CLAUDE.md 禁止未經確認逕行修改，需使用者拍板範圍 | [[NOTE_MEET_260709_001]]、[[AGENOTEs/VPs/v0.8.0/VP.md]] | 260709 |
+| WORK_260709_001 | moticore v0.8.0：重複貼文 bug 修復 + Giscus 回覆機制 | waiting | 等下一次真實心跳跑過，確認 GraphQL `addDiscussionComment` mutation 與 `discussions: write` 權限實際可用；確認後可提報封版 | 使用者確認兩項任務都要做，且確認「不得修改 agent/」為舊規則已移除。WN1 兩項任務程式碼已完成並通過離線 smoke test，但真實 GitHub API 呼叫未驗證 | [[NOTE_MEET_260709_001]]、[[AGENOTEs/VPs/v0.8.0/VP.md]]、[[AGENOTEs/VPs/v0.8.0/WN1.md]] | 260709 |
 
 ---

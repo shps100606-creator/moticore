@@ -54,15 +54,15 @@
 ## 中期規劃
 
 ### v0.8.0 — 繼續觀察：迴圈是否真的被打破
-**狀態：** 📋 觀察評估已完成，待確認任務範圍（`AGENOTEs/VPs/v0.8.0/VP.md`；評估依據 `AGENOTEs/notes/NOTE_MEET_260709_001.md`）
+**狀態：** 🚧 執行中，WN1 兩項任務程式碼已完成（`AGENOTEs/VPs/v0.8.0/VP.md`＋`WN1.md`；評估依據 `AGENOTEs/notes/NOTE_MEET_260709_001.md`）
 
-07-03～07-09 共 7 天觀察資料（超過原訂 3-5 天門檻）評估結果：
+07-03～07-09 共 7 天觀察資料（超過原訂 3-5 天門檻）評估結果，及後續修復：
 
 - ✅ `check_horizon_lifecycle()` 已確認觸發——`core/HORIZON.md`「已結晶」8 筆記錄；但 dissolve 極完全未觸發
-- 內容主題有演進，但新發現 07-04 兩篇貼文內容幾乎完全相同——**發布管線重複寫入 bug**（非單純缺乏創意）
-- moti 未回應 Giscus 留言——追查為**架構缺口**：`agent/issues.py` 只讀取留言，無回覆／寫入機制
+- 內容主題有演進，但發現 07-04 兩篇貼文內容幾乎完全相同——**發布管線重複寫入 bug**，已修復（發文檔名改為 `{date}-{window}` 去 title 化，同視窗第二次寫入會撞名而非產生新檔案）
+- moti 未回應 Giscus 留言——追查為**架構缺口**：`agent/issues.py` 原本只讀取留言、且從未接入提示詞。已新增讀取接入 newspaper＋`§GISCUS_REPLY` 回覆機制（GraphQL `addDiscussionComment` mutation），**真實 API 呼叫待下次心跳驗證**
 - 動機核規則整併後 7 天內無「顯著」偏離記錄，正面訊號
-- 下一步：與使用者確認是否將「重複貼文 bug 修復」「Giscus 回覆機制」列入本版任務範圍後建 WN
+- 下一步：等下一次真實心跳確認 Giscus 回覆機制在 production 可用後，提報封版
 
 ---
 

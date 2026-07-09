@@ -9,6 +9,7 @@ on:
 permissions:
   contents: write
   issues: write
+  discussions: write
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
