@@ -34,7 +34,7 @@ Session 啟動時依下表自動分流，不需使用者指定模式。第一步
 | 當前版本 | v0.8.0 |
 | VP 路徑 | `AGENOTEs/VPs/v0.8.0/VP.md`（main）|
 | WN 路徑 | 無（尚未建立，v0.8.0 仍為種子階段）|
-| 版本狀態 | planning（VP 已建，僅種子定性，WN 未齊；開工前建議先累積 3-5 天 `memory/action-log.md` 觀察資料，見 VP「版本定性」）|
+| 版本狀態 | planning（7 天觀察評估已完成，見 VP「觀察評估結果」與 `AGENOTEs/notes/NOTE_MEET_260709_001.md`；WN 未建，待使用者確認候選任務範圍）|
 | 最近封版 | v0.7.0（`AGENOTEs/VPs/v0.7.0/VP.md`）|
 | 最後更新 | 2026-07-09 |
 
