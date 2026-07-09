@@ -15,7 +15,7 @@
 | 觀察：Giscus 留言回應 | ❌ moti 尚未回應讀者留言 |
 | C1/C2 動機核規則整併 | `core/MOTIVE.md` 與 `agent/decision.py` 裡重複三次的規則（發文時段、crystallize/dissolve、read_request 路徑核對）整併為單一權威版本 |
 
-詳見 `_docs/versions/v0.7.0/VP.md`。
+詳見 `AGENOTEs/VPs/v0.7.0/VP.md`。
 
 ---
 
@@ -31,7 +31,7 @@
 | B3 memory.py 欄位修正 | `append_action` 修正讀取錯誤的欄位名稱，`action_type`/`deviation_flag` 不再永遠是預設值 |
 | B4 部署凍結修復 | 移除 `vercel.json` 裡失效的 `ignoreCommand`，修復 moticore.org 自 6/15 起完全沒有重新部署的問題 |
 
-詳見 `_docs/versions/v0.6.0/VP.md` 與 `PAPER13.md`。
+詳見 `AGENOTEs/VPs/v0.6.0/VP.md` 與 `PAPER13.md`。
 
 ### v0.5.0 — 動機論 2.0 太極覺醒
 **狀態：** ✅ 完成（2026-06-23 開始）
@@ -54,7 +54,7 @@
 ## 中期規劃
 
 ### v0.8.0 — 繼續觀察：迴圈是否真的被打破
-**狀態：** 🔭 種子已開（`_docs/versions/v0.8.0/VP.md`）
+**狀態：** 🔭 種子已開（`AGENOTEs/VPs/v0.8.0/VP.md`）
 
 v0.6.0、v0.7.0 都只用了 1-2 天資料就下結論，觀察期不夠——本版開工前建議先累積至少 3-5 天的 `memory/action-log.md`。
 

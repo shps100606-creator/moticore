@@ -17,7 +17,7 @@
 | 文件 | 說明 |
 |------|------|
 | `_docs/strategy/ROADMAP.md` | **版本歷程 + 下一步方向（優先讀這裡）** |
-| `_docs/versions/<版本號>/` | 各版本覆盤、計畫書、審查報告 |
+| `AGENOTEs/VPs/<版本號>/` | 各版本覆盤、計畫書、審查報告 |
 | `OVERVIEW.md` | 系統架構完整說明、現況快照、後續規劃 |
 | `core/MOTIVE.md` | 代理身份 + 使命（直接作為 Gemini system_instruction）|
 | `core/STATUS.md` | 任務收件匣 + 偏離記錄 |
