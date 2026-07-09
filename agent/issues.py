@@ -69,22 +69,31 @@ def _sanitize(text: str, max_len: int = 500) -> str:
     return text[:max_len]
 
 
-def fetch_discussions(github_token: str, max_discussions: int = 10) -> str:
+def fetch_discussions(github_token: str, replied_ids: set | None = None,
+                       max_discussions: int = 10) -> tuple[str, dict]:
     """Fetch recent Giscus Discussions from the moticore repo via GraphQL.
 
-    Returns a Markdown-formatted string, or "" if none found or any error.
+    Returns (markdown_text, label_map). markdown_text is "" if none found or
+    any error. label_map maps a short reference label (e.g. "G1") to
+    {"discussion_id", "comment_id", "author"} for comments NOT already in
+    replied_ids — these are the comments moti can target with
+    §GISCUS_REPLY label=G1 (see post_discussion_reply). Comments already
+    replied to are still shown for context but excluded from label_map.
     """
     if not github_token:
-        return ""
+        return "", {}
+    replied_ids = replied_ids or set()
     query = """
     query($owner: String!, $repo: String!, $first: Int!) {
       repository(owner: $owner, name: $repo) {
         discussions(first: $first, orderBy: {field: CREATED_AT, direction: DESC}) {
           nodes {
+            id
             title
             body
             comments(last: 3) {
               nodes {
+                id
                 body
                 author { login }
               }
@@ -110,7 +119,7 @@ def fetch_discussions(github_token: str, max_discussions: int = 10) -> str:
         resp.raise_for_status()
         data = resp.json()
         if data.get("errors"):
-            return ""
+            return "", {}
         nodes = (
             data.get("data", {})
             .get("repository", {})
@@ -118,9 +127,12 @@ def fetch_discussions(github_token: str, max_discussions: int = 10) -> str:
             .get("nodes", [])
         )
         if not nodes:
-            return ""
+            return "", {}
         lines = ["## Giscus 留言（最新 Discussions）\n"]
+        label_map = {}
+        label_n = 0
         for d in nodes:
+            discussion_id = d.get("id", "")
             title = _sanitize(d.get("title", ""), 80)
             body = _sanitize(d.get("body", "") or "", 200)
             lines.append(f"### {title}")
@@ -132,11 +144,63 @@ def fetch_discussions(github_token: str, max_discussions: int = 10) -> str:
                 for c in comments:
                     author = (c.get("author") or {}).get("login", "unknown")
                     cbody = _sanitize(c.get("body", "") or "", 200)
-                    lines.append(f"- [{author}]: {cbody}")
+                    comment_id = c.get("id", "")
+                    if comment_id and comment_id not in replied_ids and discussion_id:
+                        label_n += 1
+                        label = f"G{label_n}"
+                        label_map[label] = {
+                            "discussion_id": discussion_id,
+                            "comment_id": comment_id,
+                            "author": author,
+                        }
+                        lines.append(f"- [{label}] [{author}]: {cbody}")
+                    else:
+                        lines.append(f"- [{author}]: {cbody}")
             lines.append("")
-        return "\n".join(lines).strip()
+        return "\n".join(lines).strip(), label_map
     except Exception:
-        return ""
+        return "", {}
+
+
+def post_discussion_reply(github_token: str, discussion_id: str,
+                          reply_to_id: str, body: str) -> bool:
+    """Post a threaded reply to a Giscus Discussion comment via GraphQL
+    mutation. Returns True on success, False on failure — a failed reply
+    must not crash the heartbeat."""
+    mutation = """
+    mutation($discussionId: ID!, $replyToId: ID!, $body: String!) {
+      addDiscussionComment(input: {discussionId: $discussionId, replyToId: $replyToId, body: $body}) {
+        comment { id }
+      }
+    }
+    """
+    try:
+        resp = requests.post(
+            GRAPHQL_API,
+            headers={
+                "Authorization": f"Bearer {github_token}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "query": mutation,
+                "variables": {
+                    "discussionId": discussion_id,
+                    "replyToId": reply_to_id,
+                    "body": body,
+                },
+            },
+            timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        if data.get("errors"):
+            print(f"[issues] Giscus reply failed: {data['errors']}")
+            return False
+        print("[issues] Giscus reply posted")
+        return True
+    except Exception as e:
+        print(f"[issues] Giscus reply failed: {e}")
+        return False
 
 
 def format_issues_for_prompt(issues: list, token: str = "") -> str:

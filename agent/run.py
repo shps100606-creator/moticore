@@ -7,7 +7,6 @@
 """
 import json
 import os
-import re
 import sys
 import time
 from pathlib import Path
@@ -20,7 +19,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 from loader import load_motive
 from memory import append_action, format_recent_for_report, get_recent_note_paths
 from decision import run_consciousness, parse_remarks
-from issues import get_open_issues, post_comment, close_issue, PROGRESS_ISSUE, fetch_discussions
+from issues import (get_open_issues, post_comment, close_issue, PROGRESS_ISSUE,
+                     fetch_discussions, post_discussion_reply)
 from reader import get_next_chunk, save_cursor, load_cursor
 from preprocessor import detect_mode, build_newspaper
 
@@ -51,6 +51,37 @@ def handle_issue_responses(parsed: dict, github_token: str) -> None:
         post_comment(github_token, num, comment)
         if r.get("close", False):
             close_issue(github_token, num)
+
+
+def handle_giscus_replies(parsed: dict, github_token: str, label_map: dict,
+                          repo_root: Path) -> None:
+    """Post moti's §GISCUS_REPLY replies and persist which comment IDs have
+    been replied to, so future heartbeats stop presenting them as new."""
+    replies = parsed.get("giscus_replies", [])
+    if not replies or not github_token:
+        return
+    replied_path = repo_root / "memory" / "giscus-replied.json"
+    try:
+        replied_ids = set(json.loads(replied_path.read_text(encoding="utf-8"))) \
+            if replied_path.exists() else set()
+    except Exception:
+        replied_ids = set()
+
+    for reply in replies:
+        label = reply.get("label", "")
+        body = reply.get("content", "").strip()
+        target = label_map.get(label)
+        if not target or not body:
+            print(f"[run] ⚠️ Giscus reply label 無法辨識，略過：{label}")
+            continue
+        ok = post_discussion_reply(
+            github_token, target["discussion_id"], target["comment_id"], body
+        )
+        if ok:
+            replied_ids.add(target["comment_id"])
+
+    replied_path.parent.mkdir(exist_ok=True)
+    replied_path.write_text(json.dumps(sorted(replied_ids)), encoding="utf-8")
 
 
 def handle_file_writes(parsed: dict, repo_root: Path) -> list[dict]:
@@ -122,14 +153,6 @@ def _save_journal_state(repo_root: Path, date_str: str, window: str) -> None:
     )
 
 
-def _slugify(text: str) -> str:
-    # \w is Unicode-aware in Python 3 str patterns, so this keeps CJK
-    # characters, letters and digits, and collapses everything else (incl.
-    # punctuation and whitespace) into single hyphens.
-    slug = re.sub(r"[^\w-]+", "-", text).strip("-")
-    return slug[:40] or "entry"
-
-
 def handle_journal(parsed: dict, repo_root: Path, action: dict,
                    window: str | None, already_posted: bool) -> dict | None:
     """Write a public post to web/content/posts/ during a designated posting
@@ -149,7 +172,13 @@ def handle_journal(parsed: dict, repo_root: Path, action: dict,
         title = title or f"心跳紀錄・{JOURNAL_WINDOW_LABELS[window]}"
         content = content or action.get("summary", "").strip() or "（本次心跳沒有可分享的具體內容）"
 
-    slug = f"{now.strftime('%Y%m%d')}-{window}-{_slugify(title)}"
+    # Slug is date+window only (no title). Title text varies between LLM
+    # calls even for the "same" window, so a title-based slug let two
+    # heartbeats that both saw already_posted=False (e.g. state update from
+    # an earlier run not yet visible) write two separate files for one
+    # window. A deterministic slug makes the second write collide with the
+    # first instead of creating a duplicate post.
+    slug = f"{now.strftime('%Y%m%d')}-{window}"
     file_path = repo_root / "web" / "content" / "posts" / f"{slug}.md"
     file_path.parent.mkdir(parents=True, exist_ok=True)
     frontmatter = f"---\ntitle: {title}\ndate: {now.strftime('%Y-%m-%d')}\n---\n\n"
@@ -293,14 +322,31 @@ def main():
         except Exception as e:
             print(f"[run] Warning (issues): {e}")
 
+    giscus_note = ""
+    giscus_label_map = {}
     if github_token:
         try:
-            discussions_content = fetch_discussions(github_token)
+            replied_path = REPO_ROOT / "memory" / "giscus-replied.json"
+            try:
+                replied_ids = set(json.loads(replied_path.read_text(encoding="utf-8"))) \
+                    if replied_path.exists() else set()
+            except Exception:
+                replied_ids = set()
+
+            discussions_content, giscus_label_map = fetch_discussions(
+                github_token, replied_ids=replied_ids
+            )
             if discussions_content:
                 (REPO_ROOT / "memory" / "giscus-comments.md").write_text(
                     discussions_content, encoding="utf-8"
                 )
                 print("[run] giscus-comments.md updated")
+            if giscus_label_map:
+                giscus_note = (
+                    "💬 讀者留言：\n" + discussions_content +
+                    "\n\n若想回應，使用 §GISCUS_REPLY label={代號}（如 G1），"
+                    "只有標了代號的留言表示尚未回覆。"
+                )
         except Exception as e:
             print(f"[run] Warning (discussions): {e}")
 
@@ -361,6 +407,7 @@ def main():
         analytics_token=vercel_token,
         analytics_project_id=vercel_project_id,
         journal_note=journal_note,
+        giscus_note=giscus_note,
     )
     print(f"[run] Newspaper assembled: {len(newspaper)} chars")
 
@@ -381,6 +428,7 @@ def main():
         handle_issue_responses(parsed, github_token)
         handle_question(parsed, open_issues, github_token, reading_context)
         handle_insight(parsed, open_issues, github_token)
+        handle_giscus_replies(parsed, github_token, giscus_label_map, REPO_ROOT)
 
     written = handle_file_writes(parsed, REPO_ROOT)
     journal_write = handle_journal(parsed, REPO_ROOT, action, journal_window, journal_already_posted)

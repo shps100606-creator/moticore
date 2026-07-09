@@ -256,7 +256,8 @@ def _layer2_status(repo_root: Path, mode: str, cursor: dict,
                    pending_issues: list, recent_log: str,
                    analytics_token: str = "",
                    analytics_project_id: str = "",
-                   journal_note: str = "") -> str:
+                   journal_note: str = "",
+                   giscus_note: str = "") -> str:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
     if cursor:
@@ -292,6 +293,9 @@ def _layer2_status(repo_root: Path, mode: str, cursor: dict,
 
     if journal_note:
         body += f"\n\n{journal_note}"
+
+    if giscus_note:
+        body += f"\n\n{giscus_note}"
 
     if analytics_token and analytics_project_id:
         analytics = _fetch_analytics(analytics_token, analytics_project_id)
@@ -485,6 +489,7 @@ def build_newspaper(
     analytics_token: str = "",
     analytics_project_id: str = "",
     journal_note: str = "",
+    giscus_note: str = "",
 ) -> str:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     header = f"╔{'═'*44}╗\n║  MOTICORE DAILY  {now}  [{mode}]\n╚{'═'*44}╝"
@@ -493,7 +498,8 @@ def build_newspaper(
     l2 = _layer2_status(repo_root, mode, cursor, pending_issues, recent_log,
                         analytics_token=analytics_token,
                         analytics_project_id=analytics_project_id,
-                        journal_note=journal_note)
+                        journal_note=journal_note,
+                        giscus_note=giscus_note)
 
     if mode == "READING":
         l3 = _layer3_reading(reading_chunk, reading_context)

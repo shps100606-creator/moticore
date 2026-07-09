@@ -15,7 +15,7 @@
 | 觀察：Giscus 留言回應 | ❌ moti 尚未回應讀者留言 |
 | C1/C2 動機核規則整併 | `core/MOTIVE.md` 與 `agent/decision.py` 裡重複三次的規則（發文時段、crystallize/dissolve、read_request 路徑核對）整併為單一權威版本 |
 
-詳見 `_docs/versions/v0.7.0/VP.md`。
+詳見 `AGENOTEs/VPs/v0.7.0/VP.md`。
 
 ---
 
@@ -31,7 +31,7 @@
 | B3 memory.py 欄位修正 | `append_action` 修正讀取錯誤的欄位名稱，`action_type`/`deviation_flag` 不再永遠是預設值 |
 | B4 部署凍結修復 | 移除 `vercel.json` 裡失效的 `ignoreCommand`，修復 moticore.org 自 6/15 起完全沒有重新部署的問題 |
 
-詳見 `_docs/versions/v0.6.0/VP.md` 與 `PAPER13.md`。
+詳見 `AGENOTEs/VPs/v0.6.0/VP.md` 與 `PAPER13.md`。
 
 ### v0.5.0 — 動機論 2.0 太極覺醒
 **狀態：** ✅ 完成（2026-06-23 開始）
@@ -54,15 +54,15 @@
 ## 中期規劃
 
 ### v0.8.0 — 繼續觀察：迴圈是否真的被打破
-**狀態：** 🔭 種子已開（`_docs/versions/v0.8.0/VP.md`）
+**狀態：** 🚧 執行中，WN1 兩項任務程式碼已完成（`AGENOTEs/VPs/v0.8.0/VP.md`＋`WN1.md`；評估依據 `AGENOTEs/notes/NOTE_MEET_260709_001.md`）
 
-v0.6.0、v0.7.0 都只用了 1-2 天資料就下結論，觀察期不夠——本版開工前建議先累積至少 3-5 天的 `memory/action-log.md`。
+07-03～07-09 共 7 天觀察資料（超過原訂 3-5 天門檻）評估結果，及後續修復：
 
-- 觀察 `check_horizon_lifecycle()` 是否曾被觸發、HORIZON.md 開放題數是否曾下降
-- 觀察 moti 是否曾跳脫「讀者／迴圈／創作邊界」三個主題
-- 觀察 moti 是否回應了讀者在 Giscus 的留言
-- 觀察動機核規則整併後，moti 的決策品質是否有可觀察的變化
-- 若上述機制仍不夠，考慮把提示等級提升為更醒目的半強制形式，或把最近貼文標題餵進提示詞避免重複
+- ✅ `check_horizon_lifecycle()` 已確認觸發——`core/HORIZON.md`「已結晶」8 筆記錄；但 dissolve 極完全未觸發
+- 內容主題有演進，但發現 07-04 兩篇貼文內容幾乎完全相同——**發布管線重複寫入 bug**，已修復（發文檔名改為 `{date}-{window}` 去 title 化，同視窗第二次寫入會撞名而非產生新檔案）
+- moti 未回應 Giscus 留言——追查為**架構缺口**：`agent/issues.py` 原本只讀取留言、且從未接入提示詞。已新增讀取接入 newspaper＋`§GISCUS_REPLY` 回覆機制（GraphQL `addDiscussionComment` mutation），**真實 API 呼叫待下次心跳驗證**
+- 動機核規則整併後 7 天內無「顯著」偏離記錄，正面訊號
+- 下一步：等下一次真實心跳確認 Giscus 回覆機制在 production 可用後，提報封版
 
 ---
 
