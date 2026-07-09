@@ -22,6 +22,7 @@
 
 | 工作ID | 名稱 | 狀態 | 下一步 | 狀態原因 / 恢復條件 | 關聯文件 | 更新日 |
 |--------|------|------|--------|----------------------|----------|--------|
-| WORK_260709_001 | moticore v0.8.0：重複貼文 bug 修復 + Giscus 回覆機制 | done | 可提報封版（`AGENOTEs/agenote-release.md`），或等使用者決定是否先繼續觀察 dissolve 極等未觀察到的項目 | PR #47 已合併進 main（`b3e898d`），手動觸發心跳（run 29022498124）驗證成功：job log 顯示 `[issues] Giscus reply posted`，`giscus-replied.json` 正確寫入，D1/D2 均在 production 驗證通過 | [[NOTE_MEET_260709_001]]、[[AGENOTEs/VPs/v0.8.0/VP.md]]、[[AGENOTEs/VPs/v0.8.0/WN1.md]] | 260709 |
+| WORK_260709_001 | moticore v0.8.0：重複貼文 bug 修復 + Giscus 回覆機制 | done | 無（技術任務本身已完成驗證）| PR #47 已合併進 main（`b3e898d`），手動觸發心跳（run 29022498124）驗證成功：job log 顯示 `[issues] Giscus reply posted`，`giscus-replied.json` 正確寫入，D1/D2 均在 production 驗證通過 | [[NOTE_MEET_260709_001]]、[[AGENOTEs/VPs/v0.8.0/VP.md]]、[[AGENOTEs/VPs/v0.8.0/WN1.md]] | 260709 |
+| WORK_260709_002 | moticore v0.8.0：繼續觀察後再決定封版 | waiting | 累積更多天觀察資料，特別留意 dissolve 極是否曾觸發、Giscus 回覆機制長期運作是否正常；使用者主動要求時再走封版流程 | 使用者 260709 明確表示 WN1 完成後暫緩封版，選擇繼續觀察（見 VP「版本定性」未解決的 dissolve 極問題）| [[AGENOTEs/VPs/v0.8.0/VP.md]] | 260709 |
 
 ---
