@@ -34,7 +34,7 @@ Session 啟動時依下表自動分流，不需使用者指定模式。第一步
 | 當前版本 | v0.8.0 |
 | VP 路徑 | `AGENOTEs/VPs/v0.8.0/VP.md`（main）|
 | WN 路徑 | `AGENOTEs/VPs/v0.8.0/WN1.md` |
-| 版本狀態 | execution（WN1 兩項任務程式碼已完成並通過離線驗證，見 VP「PM 驗收」；真實 GitHub API 呼叫待下次心跳確認後可提報封版）|
+| 版本狀態 | execution（WN1 兩項任務已完成並經真實心跳驗證成功，見 VP「PM 驗收」；WN 全部完成，可提報封版）|
 | 最近封版 | v0.7.0（`AGENOTEs/VPs/v0.7.0/VP.md`）|
 | 最後更新 | 2026-07-09 |
 

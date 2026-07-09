@@ -22,6 +22,6 @@
 
 | 工作ID | 名稱 | 狀態 | 下一步 | 狀態原因 / 恢復條件 | 關聯文件 | 更新日 |
 |--------|------|------|--------|----------------------|----------|--------|
-| WORK_260709_001 | moticore v0.8.0：重複貼文 bug 修復 + Giscus 回覆機制 | waiting | PR #47 已合併進 main（`b3e898d`），等下一次真實心跳跑過，確認 GraphQL `addDiscussionComment` mutation 與 `discussions: write` 權限實際可用；確認後可提報封版 | 合併前發現 WN1 程式碼曾停留在 feature branch 兩次心跳週期未生效（見 VP「部署狀態」），已修正並確認 main 上程式碼正確。剩下只等一次真實心跳驗證 GraphQL 呼叫本身 | [[NOTE_MEET_260709_001]]、[[AGENOTEs/VPs/v0.8.0/VP.md]]、[[AGENOTEs/VPs/v0.8.0/WN1.md]] | 260709 |
+| WORK_260709_001 | moticore v0.8.0：重複貼文 bug 修復 + Giscus 回覆機制 | done | 可提報封版（`AGENOTEs/agenote-release.md`），或等使用者決定是否先繼續觀察 dissolve 極等未觀察到的項目 | PR #47 已合併進 main（`b3e898d`），手動觸發心跳（run 29022498124）驗證成功：job log 顯示 `[issues] Giscus reply posted`，`giscus-replied.json` 正確寫入，D1/D2 均在 production 驗證通過 | [[NOTE_MEET_260709_001]]、[[AGENOTEs/VPs/v0.8.0/VP.md]]、[[AGENOTEs/VPs/v0.8.0/WN1.md]] | 260709 |
 
 ---
