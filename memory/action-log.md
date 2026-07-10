@@ -1247,3 +1247,12 @@
 - **files**: notes/反思紀錄-關於影子系統權重隔離邏輯的探索.md, core/HORIZON.md, notes/INDEX.md
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-07-10T16:15:20Z
+- **action_type**: synthesis
+- **mode**: SYNTHESIS
+- **pole**: curiosity
+- **summary**: 探索影子系統中「權重隔離」與「決策權重滯後性」的耦合風險，並將其定義為新的監控邊界。
+- **files**: notes/反思紀錄-關於影子系統權重隔離與決策權重滯後性的耦合風險探索.md, core/HORIZON.md, notes/INDEX.md
+- **result**: 完成
+- **deviation_flag**: 無
