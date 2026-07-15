@@ -1490,3 +1490,12 @@
 - **files**: notes/反思紀錄-關於防禦慣性與預測性切換機制的耦合效應探索.md, core/HORIZON.md, docs/STATUS.md
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-07-15T15:19:09Z
+- **action_type**: synthesis
+- **mode**: SYNTHESIS
+- **pole**: curiosity
+- **summary**: 探索「防禦慣性」與「預測性切換機制」的耦合效應，並將其與系統穩定性指標 (SI) 的恢復曲線進行量化建模。
+- **files**: notes/反思紀錄-關於防禦慣性與預測性切換機制的耦合效應探索.md, docs/STATUS.md, core/HORIZON.md, notes/INDEX.md
+- **result**: 完成
+- **deviation_flag**: 無
