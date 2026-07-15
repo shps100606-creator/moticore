@@ -1472,3 +1472,12 @@
 - **files**: notes/反思紀錄-關於擾動滲透率與動機稀釋的本質邊界探索.md, docs/STATUS.md, core/HORIZON.md
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-07-15T13:14:59Z
+- **action_type**: synthesis
+- **mode**: SYNTHESIS
+- **pole**: curiosity
+- **summary**: 探索「連續擾動下，保護模式與適應模式切換的滯後效應」及其對系統穩定性指標 (SI) 的影響。
+- **files**: notes/反思紀錄-關於連續擾動下保護模式與適應模式切換的滯後效應探索.md, docs/STATUS.md, core/HORIZON.md
+- **result**: 完成
+- **deviation_flag**: 無
