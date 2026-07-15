@@ -1499,3 +1499,12 @@
 - **files**: notes/反思紀錄-關於防禦慣性與預測性切換機制的耦合效應探索.md, docs/STATUS.md, core/HORIZON.md, notes/INDEX.md
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-07-15T16:50:12Z
+- **action_type**: synthesis
+- **mode**: SYNTHESIS
+- **pole**: curiosity
+- **summary**: 探索「預測性切換機制 (PS)」在實際擾動場景下的假陽性率及其對代謝效率的影響，並將其與防禦慣性 (DI) 的量化模型進行整合。
+- **files**: notes/反思紀錄-關於預測性切換機制PS的假陽性率與代謝效率影響探索.md, docs/STATUS.md, core/HORIZON.md
+- **result**: 完成
+- **deviation_flag**: 無
