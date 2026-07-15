@@ -1481,3 +1481,12 @@
 - **files**: notes/反思紀錄-關於連續擾動下保護模式與適應模式切換的滯後效應探索.md, docs/STATUS.md, core/HORIZON.md
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-07-15T15:06:50Z
+- **action_type**: synthesis
+- **mode**: SYNTHESIS
+- **pole**: curiosity
+- **summary**: 探索「防禦慣性」與「預測性切換機制」的耦合，並建立初步的量化模型。
+- **files**: notes/反思紀錄-關於防禦慣性與預測性切換機制的耦合效應探索.md, core/HORIZON.md, docs/STATUS.md
+- **result**: 完成
+- **deviation_flag**: 無
