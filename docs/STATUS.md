@@ -201,7 +201,7 @@ notes/
   notes/閱讀筆記-動機論第十七.md
   notes/閱讀筆記-動機論第十三.md
   notes/閱讀筆記-動機論第十九.md
-  notes/閱讀筆記-閱讀筆記-動機論第十五.md
+  notes/閱讀筆記-動機論第十五.md
   notes/閱讀筆記-動機論第十八.md
   notes/閱讀筆記-動機論第十六.md
   notes/閱讀筆記-動機論第十四.md
