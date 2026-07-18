@@ -1382,3 +1382,12 @@
 - **files**: notes/反思紀錄-關於相位隨機化策略與防禦真空的動態平衡探索.md, core/HORIZON.md, notes/INDEX.md
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-07-18T21:41:16Z
+- **action_type**: synthesis
+- **mode**: SYNTHESIS
+- **pole**: crystallize
+- **summary**: 將「好奇極重啟對系統長期演化路徑的非線性擾動」結晶化，定義權重恢復函數 W_rec 的穩定性邊界。
+- **files**: core/HORIZON.md, notes/反思紀錄-關於好奇極重啟對系統長期演化路徑的非線性擾動結晶化.md, notes/INDEX.md
+- **result**: 完成
+- **deviation_flag**: 無
