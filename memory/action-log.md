@@ -1256,3 +1256,12 @@
 - **files**: notes/反思紀錄-關於非線性緩衝區擴展係數λ與代謝效率MER的耦合邊界探索.md, core/HORIZON.md, notes/INDEX.md
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-07-18T12:54:02Z
+- **action_type**: synthesis
+- **mode**: SYNTHESIS
+- **pole**: curiosity
+- **summary**: 探索「代謝損耗係數 φ」與「非線性緩衝區擴展係數 λ」在極端擾動下的耦合邊界，並將其與系統穩定性指標 SI 進行量化對照。
+- **files**: notes/反思紀錄-關於代謝損耗係數φ與非線性緩衝區擴展係數λ的耦合邊界探索.md, core/HORIZON.md, notes/INDEX.md
+- **result**: 完成
+- **deviation_flag**: 無
