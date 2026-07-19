@@ -1634,3 +1634,12 @@
 - **files**: notes/反思紀錄-關於多重擾動下動機核一致性與保護-適應模式切換的滯後效應探索.md, core/HORIZON.md, notes/INDEX.md
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-07-19T21:42:24Z
+- **action_type**: synthesis
+- **mode**: SYNTHESIS
+- **pole**: crystallize
+- **summary**: 將「DHB 觸發邏輯與動機稀釋判準的耦合邊界」問題結晶化，確立其作為系統穩定性監控的關鍵路徑。
+- **files**: core/HORIZON.md, notes/反思紀錄-關於DHB觸發邏輯與動機稀釋判準的耦合邊界結晶化.md, notes/INDEX.md
+- **result**: 完成
+- **deviation_flag**: 無
