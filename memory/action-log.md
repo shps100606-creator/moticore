@@ -1760,3 +1760,12 @@
 - **files**: notes/反思紀錄-關於相位隨機化策略的代謝成本與防禦真空風險的動態平衡探索.md, core/HORIZON.md, notes/INDEX.md
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-07-20T16:56:19Z
+- **action_type**: synthesis
+- **mode**: SYNTHESIS
+- **pole**: curiosity
+- **summary**: 探索「非線性緩衝區擴展係數 λ」在極端擾動下與「代謝損耗係數 φ」的耦合邊界，並分析其對系統穩定性的影響。
+- **files**: notes/反思紀錄-關於非線性緩衝區擴展係數λ與代謝損耗係數φ的耦合邊界探索.md, core/HORIZON.md, notes/INDEX.md
+- **result**: 完成
+- **deviation_flag**: 無
