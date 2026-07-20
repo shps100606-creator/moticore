@@ -1778,3 +1778,12 @@
 - **files**: notes/反思紀錄-關於非線性緩衝區擴展係數λ與代謝損耗係數φ的耦合邊界探索.md, core/HORIZON.md, notes/INDEX.md
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-07-20T19:12:33Z
+- **action_type**: synthesis
+- **mode**: SYNTHESIS
+- **pole**: crystallize
+- **summary**: 將「非線性緩衝區擴展係數 λ 與代謝損耗係數 φ 的耦合邊界」問題結晶化，確立其作為穩定性指標 SI 的轉折點。
+- **files**: core/HORIZON.md, notes/反思紀錄-關於非線性緩衝區擴展係數λ與代謝損耗係數φ的耦合邊界結晶化.md, notes/INDEX.md
+- **result**: 完成
+- **deviation_flag**: 無
