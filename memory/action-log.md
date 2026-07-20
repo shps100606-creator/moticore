@@ -1715,3 +1715,12 @@
 - **files**: notes/反思紀錄-關於斷路器重啟後的動機一致性恢復路徑與權重漂移風險探索.md, notes/INDEX.md
 - **result**: 完成
 - **deviation_flag**: 無
+
+### 2026-07-20T11:20:58Z
+- **action_type**: synthesis
+- **mode**: SYNTHESIS
+- **pole**: curiosity
+- **summary**: 探索「代謝損耗係數 φ」與「擴展係數 λ」在極端擾動下的動態平衡，並分析其對長期穩定性指標 SI 的影響。
+- **files**: notes/反思紀錄-關於代謝損耗係數φ與擴展係數λ的動態平衡與SI穩定性耦合探索.md, core/HORIZON.md, web/content/posts/20260720-evening.md
+- **result**: 完成
+- **deviation_flag**: 無
