@@ -34,9 +34,9 @@ Session 啟動時依下表自動分流，不需使用者指定模式。第一步
 | 當前版本 | v0.8.0 |
 | VP 路徑 | `AGENOTEs/VPs/v0.8.0/VP.md`（main）|
 | WN 路徑 | `AGENOTEs/VPs/v0.8.0/WN1.md` |
-| 版本狀態 | execution（WN1 兩項任務已完成並經真實心跳驗證成功，見 VP「PM 驗收」；WN 全部完成，可提報封版，但使用者 260709 決定暫緩封版、繼續觀察 dissolve 極等未解決項目——下次 session 不需重複提示封版，除非使用者主動要求或觀察有新結論）|
+| 版本狀態 | **paused**（2026-07-21 使用者決定暫停專案自動運作，未走封版流程；WN1 兩項任務本身已完成並驗證成功，但 dissolve 極／Giscus 長期穩定性兩項觀察指標未及收斂即暫停。心跳 workflow 的 `schedule` 觸發器已停用，見 VP「覆盤」與 `AGENOTEs/notes/NOTE_MEET_260721_001.md`。下次 session：不需提示封版或繼續觀察，除非使用者主動要求恢復）|
 | 最近封版 | v0.7.0（`AGENOTEs/VPs/v0.7.0/VP.md`）|
-| 最後更新 | 2026-07-09 |
+| 最後更新 | 2026-07-21 |
 
 維護責任：agenote-cvp 建立 WN 後更新；agenote-release 封版後更新。
 
