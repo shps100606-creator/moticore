@@ -1,9 +1,12 @@
 name: moticore-agent heartbeat
 
 on:
-  schedule:
-    - cron: '0 * * * *'
-    - cron: '30 * * * *'
+  # 2026-07-21：專案暫停，自動排程停用（見 AGENOTEs/notes/NOTE_MEET_260721_001.md）。
+  # 恢復時把下面兩行 schedule 取消註解即可——雙 cron 已合併為單一 cron，
+  # 修正原本 '0 * * * *' + '30 * * * *' 兩條規則在 GitHub 排程延遲追趕時
+  # 偶爾同時觸發、造成 git push race（[rejected] fetch first）的問題。
+  # schedule:
+  #   - cron: '*/30 * * * *'
   workflow_dispatch: {}
 
 permissions:

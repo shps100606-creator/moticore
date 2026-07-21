@@ -54,15 +54,16 @@
 ## 中期規劃
 
 ### v0.8.0 — 繼續觀察：迴圈是否真的被打破
-**狀態：** 🚧 執行中，WN1 兩項任務程式碼已完成（`AGENOTEs/VPs/v0.8.0/VP.md`＋`WN1.md`；評估依據 `AGENOTEs/notes/NOTE_MEET_260709_001.md`）
+**狀態：** ⏸️ 已暫停（2026-07-21），WN1 兩項任務程式碼已完成並在 production 驗證過（`AGENOTEs/VPs/v0.8.0/VP.md`＋`WN1.md`；評估依據 `AGENOTEs/notes/NOTE_MEET_260709_001.md`）
 
 07-03～07-09 共 7 天觀察資料（超過原訂 3-5 天門檻）評估結果，及後續修復：
 
-- ✅ `check_horizon_lifecycle()` 已確認觸發——`core/HORIZON.md`「已結晶」8 筆記錄；但 dissolve 極完全未觸發
+- ✅ `check_horizon_lifecycle()` 已確認觸發——`core/HORIZON.md`「已結晶」8 筆記錄；但 dissolve 極完全未觸發（截至暫停當下累計仍是 0 次）
 - 內容主題有演進，但發現 07-04 兩篇貼文內容幾乎完全相同——**發布管線重複寫入 bug**，已修復（發文檔名改為 `{date}-{window}` 去 title 化，同視窗第二次寫入會撞名而非產生新檔案）
-- moti 未回應 Giscus 留言——追查為**架構缺口**：`agent/issues.py` 原本只讀取留言、且從未接入提示詞。已新增讀取接入 newspaper＋`§GISCUS_REPLY` 回覆機制（GraphQL `addDiscussionComment` mutation），**真實 API 呼叫待下次心跳驗證**
-- 動機核規則整併後 7 天內無「顯著」偏離記錄，正面訊號
-- 下一步：等下一次真實心跳確認 Giscus 回覆機制在 production 可用後，提報封版
+- moti 未回應 Giscus 留言——追查為**架構缺口**：`agent/issues.py` 原本只讀取留言、且從未接入提示詞。已新增讀取接入 newspaper＋`§GISCUS_REPLY` 回覆機制（GraphQL `addDiscussionComment` mutation），07-09 真實心跳驗證成功；但之後無新留言可測，長期穩定性未驗證
+- 動機核規則整併後無「顯著」偏離記錄，正面訊號
+- **2026-07-21 新發現並修復**：`.github/workflows/heartbeat.yml` 雙 cron 在 GitHub Actions 排程延遲追趕時偶爾同時觸發兩個 runner，造成 git push race（`[rejected] fetch first`），該次心跳全部本地寫入遺失（07-18~21 樣本 60 次執行中發生 2 次）。已合併為單一 cron。詳見 `AGENOTEs/notes/NOTE_MEET_260721_001.md`
+- **暫停決定**：使用者判斷專案運作至今產生的意義有限，決定不再等待 dissolve 極 / Giscus 長期穩定性觀察收斂，直接暫停自動心跳（`schedule` 觸發器停用，保留 `workflow_dispatch` 供未來手動恢復），未走封版流程
 
 ---
 
