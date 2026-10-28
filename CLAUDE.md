@@ -48,6 +48,7 @@ Session 啟動時依下表自動分流，不需使用者指定模式。第一步
 |------|------|---------|
 | 共用工具 skill 索引 | claude-skills 根目錄 `skills.md`（跨 repo） | 建 VP/WN 任務前，確認有無現成可重用工具 skill |
 | 系統架構與現況說明 | `OVERVIEW.md` | 規劃任何版本必讀 |
+| 程式碼結構說明書 | `CODEBASE-STRUCTURE.md` | 修改 agent、core authority、memory、workflow 或 web 邊界前；不得因文件整理恢復 paused automation |
 | 代理身份與使命 | `core/MOTIVE.md` | 涉及行為規則、決策邏輯異動時必讀 |
 | 好奇極追蹤機制 | `core/HORIZON.md` | 涉及 crystallize/dissolve 或好奇極相關開發時 |
 | 版本方向與歷程總覽 | `_docs/strategy/ROADMAP.md` | 版本定位不明時 |
